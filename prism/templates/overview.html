@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Overview · prism{% endblock %}
 {% block content %}
+{% if not data.brand %}
+<div class="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+  <h2 class="text-lg font-semibold text-slate-700 mb-2">No brand configured yet</h2>
+  <p class="text-sm text-slate-500 mb-4">Set up your brand and competitors to start tracking AI visibility.</p>
+  <a href="/setup?tenant={{ tenant.id }}" class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Set up your brand</a>
+</div>
+{% else %}
 <div class="mb-8 flex items-end justify-between">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">{{ data.brand.name }} overview</h1>
@@ -43,6 +50,7 @@
   </div>
   <div class="h-64"><canvas id="sov"></canvas></div>
 </div>
+{% endif %}
 {% endblock %}
 {% block scripts %}
 <script>

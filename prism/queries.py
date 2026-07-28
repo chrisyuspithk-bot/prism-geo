@@ -21,6 +21,10 @@ def _dicts(rows) -> list[dict]:
 def overview(conn, tenant_id: int, days: int = 30, model_id: int | None = None) -> dict:
     mf, mp = _model_filter(model_id)
     own = q1(conn, "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 1", (tenant_id,))
+    if own is None:
+        last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ?", (tenant_id,))
+        return {"brand": None, "prompts": 0, "runs": 0, "citations": 0,
+                "visibility": 0.0, "last_run": last["t"] if last else None}
     totals = q1(
         conn,
         f"""SELECT COUNT(*) AS runs, COUNT(DISTINCT r.prompt_id) AS prompts
@@ -57,6 +61,8 @@ def visibility_page(conn, tenant_id: int, days: int = 30, model_id: int | None =
     """Per-prompt visibility with brand chips and daily trend series."""
     mf, mp = _model_filter(model_id)
     own = q1(conn, "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 1", (tenant_id,))
+    if own is None:
+        return {"cards": [], "overall": 0.0, "prompt_count": 0, "run_count": 0}
     prompts = q(conn, "SELECT * FROM prompts WHERE active = 1 AND tenant_id = ? ORDER BY id",
                 (tenant_id,))
 
@@ -116,6 +122,8 @@ def visibility_page(conn, tenant_id: int, days: int = 30, model_id: int | None =
 def share_of_voice_page(conn, tenant_id: int, days: int = 30, model_id: int | None = None) -> dict:
     mf, mp = _model_filter(model_id)
     own = q1(conn, "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 1", (tenant_id,))
+    if own is None:
+        return {"table": [], "trend": {}, "days": []}
     rows = q(
         conn,
         f"""SELECT b.name, COUNT(DISTINCT m.run_id) AS runs,
@@ -211,6 +219,8 @@ def opportunities_page(conn, tenant_id: int, days: int = 30, model_id: int | Non
     """Prompts where competitors are visible but the tracked brand is not."""
     mf, mp = _model_filter(model_id)
     own = q1(conn, "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 1", (tenant_id,))
+    if own is None:
+        return {"opportunities": []}
     rows = q(
         conn,
         f"""SELECT p.id, p.text, p.tags,
