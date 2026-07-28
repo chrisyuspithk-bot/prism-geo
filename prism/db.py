@@ -11,12 +11,13 @@ Engine keys (settings table) are global — set by the operator, shared by all
 tenants. tenants.owner_id is scaffolding for per-user auth, added later.
 """
 
+import os
 import sqlite3
 import time
 from contextlib import contextmanager
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "prism.db"
+DB_PATH = Path(os.environ.get("PRISM_DB_PATH", Path(__file__).resolve().parent.parent / "prism.db"))
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS tenants (
