@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Engine keys · prism{% endblock %}
+{% block content %}
+<div class="mb-8">
+  <h1 class="text-2xl font-semibold tracking-tight">Engine keys</h1>
+  <p class="mt-1 max-w-2xl text-sm text-slate-500">
+    You are the provider — these keys are set once here and shared by
+    <span class="font-medium text-slate-700">every client</span>. Each evaluation runs a
+    client's prompts against every <span class="font-medium text-slate-700">enabled</span>
+    engine, which is what makes cross-engine visibility meaningful. Keys stay in your
+    database and are sent only to the engine provider.
+  </p>
+</div>
+
+{% if request.query_params.get('saved') %}
+<div class="mb-4 max-w-3xl rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">Saved.</div>
+{% endif %}
+{% if request.query_params.get('need') %}
+<div class="mb-4 max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+  Add and enable at least one engine below before running an evaluation.
+</div>
+{% endif %}
+
+<div class="max-w-3xl space-y-4">
+  {% for p in providers %}
+  <div class="rounded-xl border {{ 'border-indigo-200 ring-1 ring-indigo-100' if p.enabled and p.api_key else 'border-slate-200' }} bg-white p-5">
+    <div class="mb-3 flex items-center justify-between">
+      <div>
+        <h2 class="font-semibold capitalize">{{ p.name }}</h2>
+        <p class="text-xs text-slate-400">{{ p.help }}</p>
+      </div>
+      {% if p.api_key and p.enabled %}
+      <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+        Tracking · {{ p.source }}
+      </span>
+      {% elif p.api_key %}
+      <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">Key set · off</span>
+      {% else %}
+      <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">No key</span>
+      {% endif %}
+    </div>
+    <form method="post" action="/settings/keys" class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+      <input type="hidden" name="provider" value="{{ p.name }}">
+      <input name="api_key" type="password" autocomplete="off"
+             placeholder="{{ '••••••••••••••••' if p.api_key else 'API key' }}"
+             class="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+      <input name="model" value="{{ p.model }}" placeholder="model"
+             class="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+      <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Save</button>
+      <input name="base_url" value="{{ p.base_url }}" placeholder="base URL (leave blank if preset)"
+             class="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none sm:col-span-2">
+      <label class="flex items-center gap-2 text-sm text-slate-600">
+        <input type="checkbox" name="enabled" value="1" {{ 'checked' if p.enabled }}
+               class="h-4 w-4 rounded border-slate-300 text-indigo-600">
+        Enabled
+      </label>
+    </form>
+    {% if p.source == 'ui' %}
+    <form method="post" action="/settings/keys/{{ p.name }}/clear" class="mt-2">
+      <button class="text-xs text-rose-500 hover:underline">Remove stored key</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <p class="text-xs text-slate-400">
+    UI-saved keys take priority over environment variables of the same name.
+    Claude/Gemini route through an OpenRouter-compatible base URL by default — point the base URL at any
+    OpenAI-compatible endpoint and set the model to match. Self-hosting? Use the <span class="font-medium">custom</span> slot.
+  </p>
+</div>
+{% endblock %}

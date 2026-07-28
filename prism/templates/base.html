@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}prism · AI visibility{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+<div class="flex min-h-screen">
+  <aside class="w-60 shrink-0 border-r border-slate-200 bg-white px-4 py-6 flex flex-col gap-1">
+    <a href="/" class="mb-4 flex items-center gap-2 px-2">
+      <span class="inline-block h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500"></span>
+      <span class="text-lg font-semibold tracking-tight">prism</span>
+      <span class="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600">GEO</span>
+    </a>
+
+    {# Tenant (client) switcher — scopes every dashboard to one client #}
+    <div class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-2">
+      <p class="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Client</p>
+      <form method="post" action="/tenant/select">
+        <input type="hidden" name="back" value="{{ request.url.path }}">
+        <select name="tenant" onchange="this.form.submit()"
+                class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm font-medium focus:border-indigo-400 focus:outline-none">
+          {% for t in tenant.all %}
+          <option value="{{ t.id }}" {{ 'selected' if t.id == tenant.current.id }}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      <a href="/tenants" class="mt-1.5 block px-1 text-[11px] font-medium text-indigo-600 hover:underline">Manage clients →</a>
+    </div>
+
+    <p class="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Dashboard</p>
+    {% set nav = [
+      ('overview', '/', 'Overview'),
+      ('visibility', '/visibility', 'Visibility'),
+      ('share-of-voice', '/share-of-voice', 'Share of Voice'),
+      ('citations', '/citations', 'Citations'),
+      ('opportunities', '/opportunities', 'Opportunities'),
+    ] %}
+    {% for key, href, label in nav %}
+    <a href="{{ href }}"
+       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == key else 'text-slate-600 hover:bg-slate-100' }}">{{ label }}</a>
+    {% endfor %}
+    <p class="px-2 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Settings</p>
+    <a href="/settings/brand"
+       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'settings-brand' else 'text-slate-600 hover:bg-slate-100' }}">Brand & competitors</a>
+    <a href="/settings/prompts"
+       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'settings-prompts' else 'text-slate-600 hover:bg-slate-100' }}">Prompts</a>
+    <p class="px-2 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Operator</p>
+    <a href="/tenants"
+       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'tenants' else 'text-slate-600 hover:bg-slate-100' }}">Clients</a>
+    <a href="/settings/keys"
+       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'settings-keys' else 'text-slate-600 hover:bg-slate-100' }}">Engine keys</a>
+    <a href="/setup"
+       class="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-center text-sm font-semibold text-indigo-700 hover:bg-indigo-100">+ Set up {{ tenant.current.name }}</a>
+    <div class="mt-auto px-2 pt-6 text-xs text-slate-400">
+      rewrite of the GEO concept<br>inspired by elmohq/elmo
+    </div>
+  </aside>
+
+  <main class="flex-1 px-8 py-8 max-w-6xl">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<script>
+function areaChart(el, labels, datasets, opts = {}) {
+  new Chart(el, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: opts.legend ?? false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 10 } } },
+        y: { min: 0, max: opts.max ?? 100, ticks: { callback: v => v + '%' }, grid: { color: '#f1f5f9' } },
+      },
+      elements: { point: { radius: 0 } },
+    },
+  });
+}
+const PALETTE = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#0ea5e9', '#f97316', '#64748b'];
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

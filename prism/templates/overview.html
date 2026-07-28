@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Overview · prism{% endblock %}
+{% block content %}
+<div class="mb-8 flex items-end justify-between">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">{{ data.brand.name }} overview</h1>
+    <p class="mt-1 text-sm text-slate-500">How answer engines talked about your brand in the last {{ days }} days.</p>
+  </div>
+  <form method="get" class="text-sm">
+    <select name="days" onchange="this.form.submit()" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5">
+      {% for d in [7, 14, 30, 90] %}
+      <option value="{{ d }}" {{ 'selected' if days == d }}>Last {{ d }} days</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+  <div class="rounded-xl border border-slate-200 bg-white p-5">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Visibility</p>
+    <p class="mt-2 text-3xl font-semibold {{ 'text-emerald-600' if data.visibility >= 60 else 'text-amber-600' }}">{{ data.visibility }}%</p>
+    <p class="mt-1 text-xs text-slate-400">of runs mention {{ data.brand.name }}</p>
+  </div>
+  <div class="rounded-xl border border-slate-200 bg-white p-5">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Prompts tracked</p>
+    <p class="mt-2 text-3xl font-semibold">{{ data.prompts }}</p>
+  </div>
+  <div class="rounded-xl border border-slate-200 bg-white p-5">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Evaluations</p>
+    <p class="mt-2 text-3xl font-semibold">{{ data.runs }}</p>
+    <p class="mt-1 text-xs text-slate-400">last run {{ data.last_run or 'never' }}</p>
+  </div>
+  <div class="rounded-xl border border-slate-200 bg-white p-5">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Citations</p>
+    <p class="mt-2 text-3xl font-semibold">{{ data.citations }}</p>
+  </div>
+</div>
+
+<div class="mt-8 rounded-xl border border-slate-200 bg-white p-6">
+  <div class="mb-4 flex items-center justify-between">
+    <h2 class="font-semibold">Share of voice — top brands</h2>
+    <a href="/share-of-voice" class="text-sm font-medium text-indigo-600 hover:underline">Full breakdown →</a>
+  </div>
+  <div class="h-64"><canvas id="sov"></canvas></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+areaChart(document.getElementById('sov'), {{ sov.days | tojson }},
+  [{% for brand, vals in sov.trend.items() %}{
+    label: {{ brand | tojson }}, data: {{ vals | tojson }},
+    borderColor: PALETTE[{{ loop.index0 }}], backgroundColor: PALETTE[{{ loop.index0 }}] + '22',
+    fill: true, tension: 0.35,
+  },{% endfor %}], { legend: true });
+</script>
+{% endblock %}

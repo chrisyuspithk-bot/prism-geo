@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Running evaluation · prism{% endblock %}
+{% block content %}
+<div class="mb-8 max-w-2xl">
+  <h1 class="text-2xl font-semibold tracking-tight">
+    {% if job.kind == 'run_all' %}Running evaluation{% else %}Running prompt{% endif %}
+  </h1>
+  <p class="mt-1 text-sm text-slate-500">Querying the answer engine in the background. This page updates live.</p>
+</div>
+
+<div class="max-w-2xl rounded-xl border border-slate-200 bg-white p-6">
+  <div class="mb-2 flex items-center justify-between text-sm">
+    <span id="status-label" class="font-medium capitalize">{{ job.status }}</span>
+    <span id="count" class="text-slate-500">{{ job.done }} / {{ job.total }}</span>
+  </div>
+  <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+    <div id="bar" class="h-full rounded-full bg-indigo-500 transition-all duration-500"
+         style="width: {{ (100 * job.done / job.total) | round(1) if job.total else 0 }}%"></div>
+  </div>
+  <p id="errors" class="mt-2 text-xs {{ 'text-rose-500' if job.errors else 'text-slate-400' }}">
+    {{ job.errors }} error{{ 's' if job.errors != 1 }}
+  </p>
+
+  <pre id="log" class="mt-4 max-h-56 overflow-y-auto rounded-lg bg-slate-50 p-3 font-mono text-[11px] text-slate-500">{{ job.log }}</pre>
+
+  <div class="mt-5 flex items-center gap-3">
+    <form method="post" action="/jobs/{{ job.id }}/cancel?back={{ back | urlencode }}">
+      <button id="cancel-btn" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              {{ 'disabled' if job.status not in ('queued','running') }}>Cancel</button>
+    </form>
+    <a id="back-link" href="{{ back }}" class="text-sm font-medium text-indigo-600 hover:underline {{ 'hidden' if job.status in ('queued','running') }}">
+      ← Back to results
+    </a>
+  </div>
+</div>
+
+<script>
+const jobId = {{ job.id }};
+async function poll() {
+  try {
+    const r = await fetch(`/api/jobs/${jobId}`);
+    if (!r.ok) return;
+    const j = await r.json();
+    document.getElementById('status-label').textContent = j.status;
+    document.getElementById('count').textContent = `${j.done} / ${j.total}`;
+    const pct = j.total ? (100 * j.done / j.total) : 0;
+    document.getElementById('bar').style.width = pct + '%';
+    const err = document.getElementById('errors');
+    err.textContent = `${j.errors} error${j.errors === 1 ? '' : 's'}`;
+    err.className = 'mt-2 text-xs ' + (j.errors ? 'text-rose-500' : 'text-slate-400');
+    document.getElementById('log').textContent = j.log;
+    const running = j.status === 'queued' || j.status === 'running';
+    document.getElementById('cancel-btn').disabled = !running;
+    document.getElementById('back-link').classList.toggle('hidden', running);
+    if (!running) return;  // stop polling when finished
+  } catch (e) { /* keep polling */ }
+  setTimeout(poll, 1200);
+}
+if (['queued', 'running'].includes('{{ job.status }}')) setTimeout(poll, 800);
+</script>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Opportunities · prism{% endblock %}
+{% block content %}
+<div class="mb-8">
+  <h1 class="text-2xl font-semibold tracking-tight">Opportunities</h1>
+  <p class="mt-1 text-sm text-slate-500">Prompts where competitors show up but you don't — ranked by how winnable they look.</p>
+</div>
+
+{% if not data.opportunities %}
+<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-700">
+  No gaps found — your brand is mentioned in every tracked prompt. Nice.
+</div>
+{% endif %}
+
+<div class="space-y-4">
+  {% for o in data.opportunities %}
+  <div class="rounded-xl border border-slate-200 bg-white p-5">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <a href="/prompts/{{ o.id }}" class="font-medium hover:text-indigo-600">{{ o.text }}</a>
+        {% if o.tags %}<span class="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">{{ o.tags }}</span>{% endif %}
+        <div class="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+          competitors present:
+          {% for c in o.competitors[:6] %}
+          <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ c }}</span>
+          {% endfor %}
+        </div>
+        <p class="mt-2 text-xs text-slate-400">GEO lever: earn coverage on the domains this prompt's answers cite, and publish content that directly answers it.</p>
+      </div>
+      <div class="shrink-0 text-right">
+        <p class="text-2xl font-semibold text-rose-500">{{ o.visibility }}%</p>
+        <p class="text-xs text-slate-400">your visibility</p>
+        <p class="mt-1 text-xs font-medium text-amber-600">opportunity {{ o.score }}/100</p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
