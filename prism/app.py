@@ -385,6 +385,16 @@ def delete_prompt(request: Request, prompt_id: int):
     return RedirectResponse("/settings/prompts", status_code=303)
 
 
+@app.post("/prompts/{prompt_id}/update")
+def update_prompt(request: Request, prompt_id: int,
+                  text: str = Form(...), tags: str = Form("")):
+    tenant = _tenant(request)
+    with connect() as conn:
+        conn.execute("UPDATE prompts SET text = ?, tags = ? WHERE id = ? AND tenant_id = ?",
+                     (text, tags, prompt_id, tenant["id"]))
+    return RedirectResponse("/settings/prompts", status_code=303)
+
+
 @app.get("/settings/prompts", response_class=HTMLResponse)
 def settings_prompts(request: Request):
     tenant = _tenant(request)

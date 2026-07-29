@@ -19,18 +19,31 @@
     <thead>
       <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
         <th class="px-5 py-3">{{ t('prompts_col') }}</th><th class="px-5 py-3">Tags</th>
-        <th class="px-5 py-3">{{ t('runs_col') }}</th><th class="px-5 py-3"></th>
+        <th class="px-5 py-3">{{ t('runs_col') }}</th><th class="px-5 py-3 w-28"></th>
       </tr>
     </thead>
     <tbody>
       {% for p in prompts %}
-      <tr class="border-b border-slate-100 last:border-0">
-        <td class="px-5 py-3"><a href="/prompts/{{ p.id }}" class="font-medium hover:text-indigo-600">{{ p.text }}</a></td>
-        <td class="px-5 py-3 text-slate-500">{{ p.tags }}</td>
+      <tr class="border-b border-slate-100 last:border-0" id="row-{{ p.id }}">
+        {# read view #}
+        <td class="px-5 py-3 view-cell"><a href="/prompts/{{ p.id }}" class="font-medium hover:text-indigo-600">{{ p.text }}</a></td>
+        <td class="px-5 py-3 text-slate-500 view-cell">{{ p.tags }}</td>
         <td class="px-5 py-3 text-slate-500">{{ p.runs }}</td>
-        <td class="px-5 py-3 text-right">
-          <form method="post" action="/prompts/{{ p.id }}/delete" onsubmit="return confirm('Delete this prompt and its history?')">
+        <td class="px-5 py-3 text-right view-cell">
+          <button onclick="editRow({{ p.id }})" class="text-xs text-indigo-600 hover:underline mr-2">{{ t('edit') }}</button>
+          <form method="post" action="/prompts/{{ p.id }}/delete" onsubmit="return confirm('Delete this prompt and its history?')" class="inline">
             <button class="text-xs text-rose-500 hover:underline">{{ t('delete') }}</button>
+          </form>
+        </td>
+        {# edit view — hidden by default #}
+        <td colspan="4" class="px-5 py-3 edit-cell" style="display:none">
+          <form method="post" action="/prompts/{{ p.id }}/update" class="flex gap-2">
+            <input name="text" value="{{ p.text }}" required
+                   class="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+            <input name="tags" value="{{ p.tags or '' }}"
+                   class="w-40 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+            <button class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('save') }}</button>
+            <button type="button" onclick="cancelEdit({{ p.id }})" class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">{{ t('cancel') }}</button>
           </form>
         </td>
       </tr>
@@ -39,4 +52,17 @@
   </table>
 </div>
 <p class="mt-4 text-xs text-slate-400">{{ t('total_runs_label') }} {{ total_runs }}</p>
+
+<script>
+function editRow(id) {
+  const row = document.getElementById('row-' + id);
+  row.querySelectorAll('.view-cell').forEach(el => el.style.display = 'none');
+  row.querySelector('.edit-cell').style.display = '';
+}
+function cancelEdit(id) {
+  const row = document.getElementById('row-' + id);
+  row.querySelectorAll('.view-cell').forEach(el => el.style.display = '');
+  row.querySelector('.edit-cell').style.display = 'none';
+}
+</script>
 {% endblock %}
