@@ -9,7 +9,7 @@ primary_region = "iad"
   PRISM_DB_PATH = "/data/prism.db"
 
 [[vm]]
-  memory = "256mb"
+  memory = "512mb"
   cpu_kind = "shared"
   cpus = 1
 
