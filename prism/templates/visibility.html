@@ -63,8 +63,14 @@
 {% for card in data.cards %}
 areaChart(document.getElementById('spark-{{ card.id }}'),
   {{ card.series | map(attribute='day') | list | tojson }},
-  [{ label: 'visibility', data: {{ card.series | map(attribute='pct') | list | tojson }},
-     borderColor: '#6366f1', backgroundColor: '#6366f122', fill: true, tension: 0.35 }]);
+  [
+    { label: '{{ data.own }}', data: {{ card.series | map(attribute='pct') | list | tojson }},
+      borderColor: '#6366f1', backgroundColor: '#6366f122', fill: true, tension: 0.35, borderWidth: 2 },
+    {% for c in card.competitors %}
+    { label: '{{ c.name }}', data: {{ c.series | map(attribute='pct') | list | tojson }},
+      borderColor: '{{ c.color }}', backgroundColor: '{{ c.color }}11', fill: true, tension: 0.35, borderWidth: 1.5, borderDash: [4, 3] },
+    {% endfor %}
+  ]);
 {% endfor %}
 </script>
 {% endblock %}

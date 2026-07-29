@@ -94,13 +94,27 @@ def visibility_page(conn, tenant_id: int, days: int = 30, model_id: int | None =
         slot["mentioned"] += 1 if mentioned else 0
         for b in brands:
             slot["brands"][b] = slot["brands"].get(b, 0) + 1
-        series_rows[r["prompt_id"]].append({"day": r["day"], "mentioned": mentioned})
+        series_rows[r["prompt_id"]].append({"day": r["day"], "mentioned": mentioned,
+                                            "brands": brands})
+
+    COMP_COLORS = ["#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"]
 
     cards = []
     for pid, slot in per_prompt.items():
         series = stats.visibility_by_day(series_rows[pid], own["name"])
         vis = stats.overall_visibility(slot["runs"], slot["mentioned"])
         top = sorted(slot["brands"].items(), key=lambda kv: -kv[1])[:6]
+
+        # Competitor sparkline data: top 3 competitors by mention count
+        comp_names = [n for n, _ in top if n != own["name"]][:3]
+        competitors = []
+        for i, cn in enumerate(comp_names):
+            cseries = stats.competitor_by_day(series_rows[pid], cn)
+            competitors.append({
+                "name": cn, "color": COMP_COLORS[i % len(COMP_COLORS)],
+                "series": cseries,
+            })
+
         cards.append({
             "id": pid,
             "text": slot["prompt"]["text"],
@@ -109,6 +123,7 @@ def visibility_page(conn, tenant_id: int, days: int = 30, model_id: int | None =
             "runs": slot["runs"],
             "top_brands": [{"name": n, "count": c} for n, c in top],
             "series": series,
+            "competitors": competitors,
         })
     cards.sort(key=lambda c: (-c["visibility"], c["text"]))
 
@@ -116,7 +131,7 @@ def visibility_page(conn, tenant_id: int, days: int = 30, model_id: int | None =
     weighted = sum(c["visibility"] * c["runs"] for c in cards)
     overall = round(weighted / total_runs, 1) if total_runs else 0.0
     return {"cards": cards, "overall": overall, "prompt_count": len(cards),
-            "run_count": total_runs}
+            "run_count": total_runs, "own": own["name"]}
 
 
 def share_of_voice_page(conn, tenant_id: int, days: int = 30, model_id: int | None = None) -> dict:

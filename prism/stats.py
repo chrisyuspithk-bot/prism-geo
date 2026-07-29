@@ -21,6 +21,17 @@ def visibility_by_day(runs: list[dict], brand_name: str) -> list[dict]:
     ]
 
 
+def competitor_by_day(runs: list[dict], brand_name: str) -> list[dict]:
+    """Daily visibility % for one competitor brand from runs with {day, brands}."""
+    by_day: dict[str, list[int]] = defaultdict(list)
+    for r in runs:
+        by_day[r["day"]].append(1 if brand_name in (r.get("brands") or []) else 0)
+    return [
+        {"day": day, "pct": round(100 * sum(v) / len(v), 1)}
+        for day, v in sorted(by_day.items())
+    ]
+
+
 def overall_visibility(total_runs: int, mentioned_runs: int) -> float:
     if total_runs == 0:
         return 0.0
