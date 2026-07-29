@@ -168,14 +168,22 @@ async def generate_prompts(brand: str, competitors: list[str],
             )
         try:
             async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(
-                    f"{api_base.rstrip('/')}/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {api_key}"},
-                    json={"model": model, "temperature": 0.8,
-                          "messages": [{"role": "user", "content": ask}]},
-                )
-                resp.raise_for_status()
-                raw = resp.json()["choices"][0]["message"]["content"]
+                if "generativelanguage.googleapis.com" in api_base:
+                    resp = await client.post(
+                        f"{api_base.rstrip('/')}/models/{model}:generateContent?key={api_key}",
+                        json={"contents": [{"parts": [{"text": ask}]}]},
+                    )
+                    resp.raise_for_status()
+                    raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                else:
+                    resp = await client.post(
+                        f"{api_base.rstrip('/')}/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {api_key}"},
+                        json={"model": model, "temperature": 0.8,
+                              "messages": [{"role": "user", "content": ask}]},
+                    )
+                    resp.raise_for_status()
+                    raw = resp.json()["choices"][0]["message"]["content"]
             match = re.search(r"\[.*\]", raw, re.S)
             items = json.loads(match.group(0)) if match else []
             prompts = [

@@ -1,11 +1,11 @@
 """Run prompts against answer engines and persist parsed results.
 
-The provider is any OpenAI-compatible chat-completions endpoint (OpenAI,
-DeepSeek, OpenRouter, a local vLLM, ...). Web-grounded answers are what GEO
-cares about, so providers that support a web-search tool should enable it
-via PRISM_ENABLE_SEARCH=1.
+Each engine may speak a different API dialect. Gemini uses Google's native
+/generateContent endpoint (key in query string, different JSON shape); every
+other engine is treated as OpenAI-compatible chat/completions.
 """
 
+import json as _json
 import os
 from datetime import datetime, timezone
 
@@ -28,19 +28,27 @@ def active_engine() -> tuple[str, str, str, str]:
     return keystore.active_config()
 
 
-async def query_engine(prompt: str, *, engine: dict | None = None) -> tuple[str, str]:
-    """Query one answer engine. Returns (status, response_text).
+async def _query_gemini(prompt: str, key: str, base: str, model: str) -> tuple[str, str]:
+    """Query Gemini native API (generateContent)."""
+    url = f"{base.rstrip('/')}/models/{model}:generateContent?key={key}"
+    body = {
+        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": [{"parts": [{"text": prompt}]}],
+    }
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            resp = await client.post(url, json=body)
+            resp.raise_for_status()
+            data = resp.json()
+            return "ok", data["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as exc:
+        return "error", str(exc)
 
-    `engine` is a keystore engine dict; falls back to the first active one.
-    """
-    if engine is None:
-        _, key, base, mdl = active_engine()
-    else:
-        key, base, mdl = engine["api_key"], engine["base_url"], engine["model"]
-    if not key:
-        return "error", "No API key configured — add one at /settings/keys."
+
+async def _query_openai(prompt: str, key: str, base: str, model: str) -> tuple[str, str]:
+    """Query any OpenAI-compatible chat/completions endpoint."""
     payload = {
-        "model": mdl,
+        "model": model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
@@ -57,8 +65,26 @@ async def query_engine(prompt: str, *, engine: dict | None = None) -> tuple[str,
             resp.raise_for_status()
             data = resp.json()
             return "ok", data["choices"][0]["message"]["content"]
-    except Exception as exc:  # network, auth, shape — record and move on
+    except Exception as exc:
         return "error", str(exc)
+
+
+async def query_engine(prompt: str, *, engine: dict | None = None) -> tuple[str, str]:
+    """Query one answer engine. Returns (status, response_text).
+
+    `engine` is a keystore engine dict; falls back to the first active one.
+    """
+    if engine is None:
+        _, key, base, mdl = active_engine()
+        name = ""
+    else:
+        key, base, mdl, name = engine["api_key"], engine["base_url"], engine["model"], engine["name"]
+    if not key:
+        return "error", "No API key configured — add one at /settings/keys."
+
+    if name == "gemini":
+        return await _query_gemini(prompt, key, base, mdl)
+    return await _query_openai(prompt, key, base, mdl)
 
 
 def store_run(conn, prompt_id: int, model_id: int, status: str, text: str,
