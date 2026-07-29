@@ -381,19 +381,6 @@ def save_schedule(enabled: str = Form("0"), hour: str = Form("2")):
     return RedirectResponse("/settings/keys?saved=1", status_code=303)
 
 
-@app.post("/admin/reset-db")
-def reset_db():
-    import os, sqlite3
-    from .db import DB_PATH
-    # Close any open connections by getting path from a fresh connect
-    tmp = sqlite3.connect(str(DB_PATH))
-    db_path = tmp.execute("PRAGMA database_list").fetchone()[2]
-    tmp.close()
-    os.remove(db_path)
-    init_db()
-    return RedirectResponse("/", status_code=303)
-
-
 # --- Prompt management ----------------------------------------------------------
 
 @app.post("/prompts")
