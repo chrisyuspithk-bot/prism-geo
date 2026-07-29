@@ -30,6 +30,17 @@
   <p class="text-sm text-amber-600 mt-1">Refresh the page to check progress.</p>
   <script>setTimeout(function(){location.reload()}, 3000)</script>
 </div>
+{% elif site.status == 'failed' %}
+<div class="rounded-xl border border-red-200 bg-red-50 p-6 text-center mb-6">
+  <p class="text-red-700 font-medium">Crawl failed</p>
+  {% if site.crawl_error %}
+  <p class="text-sm text-red-600 mt-1">{{ site.crawl_error }}</p>
+  {% endif %}
+</div>
+{% elif site.status == 'pending' %}
+<div class="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center mb-6">
+  <p class="text-slate-500">Ready to crawl</p>
+</div>
 {% endif %}
 
 {% if pages %}

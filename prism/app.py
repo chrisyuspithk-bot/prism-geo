@@ -653,6 +653,8 @@ def _run_crawl(site_id: int, domain: str):
     def _do():
         try:
             urls = crawler.discover(domain)
+            if not urls:
+                raise RuntimeError(f"No URLs discovered for {domain} (sitemap empty, homepage fallback failed)")
             pages_data: list[dict] = []
             with ThreadPoolExecutor(max_workers=8) as ex:
                 futures = {ex.submit(crawler.fetch_page, u): u for u in urls}
