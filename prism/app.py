@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import i18n, jobs, keystore, queries, report, scheduler, workspace
+from . import crawler, chunk, drafts, embeddings, rag
 from .db import connect, init_db, q, q1
 from .onboarding import analyze_website, generate_prompts
 
@@ -466,3 +467,212 @@ def api_citations(request: Request, days: int = 30):
     tenant = _tenant(request)
     with connect() as conn:
         return JSONResponse(queries.citations_page(conn, tenant["id"], days))
+
+
+# --- Content Studio (website crawling + RAG copy generation) ------------------
+
+def _site_queries(tenant_id: int):
+    """Return (sites list, dict of site -> pages list)."""
+    with connect() as conn:
+        rows = q(conn,
+                 "SELECT * FROM sites WHERE tenant_id = ? ORDER BY created_at DESC",
+                 (tenant_id,))
+        sites = [dict(r) for r in rows]
+        pages_by_site = {}
+        for s in sites:
+            ps = q(conn,
+                   """SELECT p.*, COUNT(c.id) as chunk_count
+                      FROM pages p LEFT JOIN chunks c ON c.page_id = p.id
+                      WHERE p.site_id = ?
+                      GROUP BY p.id ORDER BY p.crawled_at""",
+                   (s["id"],))
+            pages_by_site[s["id"]] = [dict(p) for p in ps]
+    return sites, pages_by_site
+
+
+@app.get("/sites", response_class=HTMLResponse)
+def sites_page(request: Request):
+    tenant = _tenant(request)
+    s, _ = _site_queries(tenant["id"])
+    return templates.TemplateResponse(
+        request, "sites.html", context=ctx(request, page="sites", sites=s))
+
+
+@app.post("/sites")
+def add_site(request: Request, domain: str = Form(...)):
+    tenant = _tenant(request)
+    domain = domain.strip().lower().replace("https://", "").replace("http://", "").rstrip("/")
+    with connect() as conn:
+        try:
+            cur = conn.execute(
+                "INSERT INTO sites (tenant_id, domain) VALUES (?, ?)",
+                (tenant["id"], domain))
+            site_id = cur.lastrowid
+        except Exception:
+            # Site already exists
+            row = q1(conn, "SELECT id FROM sites WHERE tenant_id = ? AND domain = ?",
+                     (tenant["id"], domain))
+            site_id = row["id"] if row else 0
+
+    if site_id:
+        _run_crawl(site_id, domain)
+    return RedirectResponse(f"/sites?lang={_resolve_lang(request)}", 303)
+
+
+@app.get("/sites/{site_id}", response_class=HTMLResponse)
+def site_detail(request: Request, site_id: int):
+    tenant = _tenant(request)
+    sites, pages_by_site = _site_queries(tenant["id"])
+    site = next((s for s in sites if s["id"] == site_id), None)
+    if not site:
+        return RedirectResponse("/sites", 303)
+    return templates.TemplateResponse(
+        request, "site.html",
+        context=ctx(request, page="sites", site=site, pages=pages_by_site.get(site_id, [])))
+
+
+@app.post("/sites/{site_id}/crawl")
+def crawl_site(request: Request, site_id: int):
+    tenant = _tenant(request)
+    with connect() as conn:
+        row = q1(conn, "SELECT * FROM sites WHERE id = ? AND tenant_id = ?", (site_id, tenant["id"]))
+    if row:
+        site = dict(row)
+        _run_crawl(site_id, site["domain"])
+    return RedirectResponse(f"/sites/{site_id}?lang={_resolve_lang(request)}", 303)
+
+
+@app.post("/sites/{site_id}/delete")
+def delete_site(request: Request, site_id: int):
+    tenant = _tenant(request)
+    with connect() as conn:
+        conn.execute("DELETE FROM sites WHERE id = ? AND tenant_id = ?", (site_id, tenant["id"]))
+    return RedirectResponse(f"/sites?lang={_resolve_lang(request)}", 303)
+
+
+@app.get("/sites/{site_id}/generate", response_class=HTMLResponse)
+def generate_page(request: Request, site_id: int):
+    tenant = _tenant(request)
+    sites, pages_by_site = _site_queries(tenant["id"])
+    site = next((s for s in sites if s["id"] == site_id), None)
+    if not site or site["status"] != "ready":
+        return RedirectResponse(f"/sites/{site_id}", 303)
+    return templates.TemplateResponse(
+        request, "generate.html",
+        context=ctx(request, page="sites", site=site, pages=pages_by_site.get(site_id, [])))
+
+
+@app.post("/api/generate")
+async def api_generate(request: Request):
+    tenant = _tenant(request)
+    body = await request.json()
+    site_id = body.get("site_id")
+    prompt = body.get("prompt", "")
+    fmt = body.get("format", "linkedin_post")
+
+    with connect() as conn:
+        site = q1(conn, "SELECT * FROM sites WHERE id = ? AND tenant_id = ?", (site_id, tenant["id"]))
+        if not site:
+            return JSONResponse({"error": "Site not found"}, 404)
+        chunks_list = rag.retrieve(conn, site_id, prompt)
+
+    if not chunks_list:
+        return JSONResponse({"error": "No relevant content found. Try re-crawling the site."}, 400)
+
+    system_prompt = rag.build_prompt(chunks_list, prompt, fmt)
+    content = rag.generate_with_llm(system_prompt)
+
+    return JSONResponse({"content": content, "sources": len(chunks_list)})
+
+
+@app.post("/api/drafts")
+def create_draft_endpoint(request: Request, site_id: int = Form(...), prompt: str = Form(...),
+                          format: str = Form("linkedin_post"), content: str = Form(...)):
+    tenant = _tenant(request)
+    draft_id = drafts.create_draft(tenant["id"], site_id, prompt, format, content)
+    return RedirectResponse(f"/drafts/{draft_id}?lang={_resolve_lang(request)}", 303)
+
+
+@app.get("/drafts", response_class=HTMLResponse)
+def drafts_page(request: Request, status: str = "all"):
+    tenant = _tenant(request)
+    status_filter = status if status in ("draft", "published") else None
+    drafts_list = drafts.list_drafts(tenant["id"], status_filter)
+    return templates.TemplateResponse(
+        request, "drafts.html",
+        context=ctx(request, page="drafts", drafts_list=drafts_list, current_status=status))
+
+
+@app.get("/drafts/{draft_id}", response_class=HTMLResponse)
+def draft_view(request: Request, draft_id: int):
+    tenant = _tenant(request)
+    d = drafts.get_draft(tenant["id"], draft_id)
+    if not d:
+        return RedirectResponse("/drafts", 303)
+    return templates.TemplateResponse(
+        request, "draft.html", context=ctx(request, page="drafts", draft=d))
+
+
+@app.post("/drafts/{draft_id}")
+def draft_action(request: Request, draft_id: int, action: str = Form("save"),
+                 content: str = Form(None)):
+    tenant = _tenant(request)
+    if action == "save" and content is not None:
+        drafts.update_draft(tenant["id"], draft_id, content=content)
+    elif action == "publish":
+        d = drafts.get_draft(tenant["id"], draft_id)
+        new_status = "draft" if (d and d["status"] == "published") else "published"
+        drafts.update_draft(tenant["id"], draft_id, status=new_status)
+    return RedirectResponse(f"/drafts/{draft_id}?lang={_resolve_lang(request)}", 303)
+
+
+@app.post("/drafts/{draft_id}/delete")
+def draft_delete(request: Request, draft_id: int):
+    tenant = _tenant(request)
+    drafts.delete_draft(tenant["id"], draft_id)
+    return RedirectResponse(f"/drafts?lang={_resolve_lang(request)}", 303)
+
+
+def _run_crawl(site_id: int, domain: str):
+    """Run crawl synchronously (in background via FastAPI thread pool)."""
+    with connect() as conn:
+        conn.execute("UPDATE sites SET status = 'crawling', crawl_error = NULL WHERE id = ?", (site_id,))
+
+    import threading
+
+    def _do():
+        try:
+            urls = crawler.discover(domain)
+            with connect() as conn:
+                # Delete old pages/chunks
+                conn.execute("DELETE FROM pages WHERE site_id = ?", (site_id,))
+                page_count = 0
+                for url in urls:
+                    page = crawler.fetch_page(url)
+                    if page is None:
+                        continue
+                    cur = conn.execute(
+                        "INSERT INTO pages (site_id, url, path, title, headings, content) VALUES (?, ?, ?, ?, ?, ?)",
+                        (site_id, page["url"], page["path"], page["title"], page["headings"], page["content"]),
+                    )
+                    page_id = cur.lastrowid
+                    chunks_list = chunk.chunk_text(page["content"])
+                    for i, ch in enumerate(chunks_list):
+                        vec = embeddings.embed_one(ch)
+                        conn.execute(
+                            "INSERT INTO chunks (page_id, site_id, seq, content, embedding) VALUES (?, ?, ?, ?, ?)",
+                            (page_id, site_id, i, ch, embeddings.pack(vec)),
+                        )
+                    page_count += 1
+                conn.execute(
+                    "UPDATE sites SET status = 'ready', page_count = ?, last_crawled = datetime('now') WHERE id = ?",
+                    (page_count, site_id),
+                )
+        except Exception as e:
+            with connect() as conn:
+                conn.execute(
+                    "UPDATE sites SET status = 'failed', crawl_error = ? WHERE id = ?",
+                    (str(e)[:500], site_id),
+                )
+
+    threading.Thread(target=_do, daemon=True).start()

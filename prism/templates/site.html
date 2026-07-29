@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ site.domain }}{% endblock %}
+{% block content %}
+<div class="mb-6 flex items-end justify-between">
+  <div>
+    <a href="/sites" class="text-sm font-medium text-indigo-600 hover:underline">{{ t('back_to_site') }}</a>
+    <h1 class="mt-1 text-2xl font-semibold tracking-tight">{{ site.domain }}</h1>
+    <p class="mt-1 text-sm text-slate-500">{{ t('pages_count', n=site.page_count) }}
+      {% if site.last_crawled %} · {{ t('last_crawled') }}: {{ site.last_crawled[:10] }}{% endif %}</p>
+  </div>
+  <div class="flex gap-2">
+    {% if site.status == 'ready' %}
+    <a href="/sites/{{ site.id }}/generate"
+       class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors">{{ t('generate_copy') }}</a>
+    {% endif %}
+    <form method="post" action="/sites/{{ site.id }}/crawl" class="inline">
+      <button type="submit"
+              class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors">{{ t('recrawl') if site.status == 'ready' else t('start_crawl') }}</button>
+    </form>
+    <form method="post" action="/sites/{{ site.id }}/delete" class="inline" onsubmit="return confirm('Delete this site?')">
+      <button type="submit"
+              class="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">{{ t('delete_site') }}</button>
+    </form>
+  </div>
+</div>
+
+{% if site.status == 'crawling' %}
+<div class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center mb-6">
+  <p class="text-amber-700 font-medium">{{ t('site_status_crawling') }}</p>
+  <p class="text-sm text-amber-600 mt-1">Refresh the page to check progress.</p>
+  <script>setTimeout(function(){location.reload()}, 3000)</script>
+</div>
+{% endif %}
+
+{% if pages %}
+<div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <th class="px-5 py-3">{{ t('title_col') }}</th>
+        <th class="px-5 py-3">URL</th>
+        <th class="px-5 py-3">{{ t('chunks') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pages %}
+      <tr class="border-b border-slate-100 last:border-0">
+        <td class="px-5 py-3 font-medium">{{ p.title or p.path }}</td>
+        <td class="px-5 py-3 text-slate-500 max-w-xs truncate">{{ p.url }}</td>
+        <td class="px-5 py-3 text-slate-500">{{ p.chunk_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% elif site.status == 'ready' %}
+<div class="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
+  <p class="text-slate-500">No pages found. Try re-crawling.</p>
+</div>
+{% endif %}
+{% endblock %}

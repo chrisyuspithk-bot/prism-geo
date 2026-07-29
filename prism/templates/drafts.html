@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ t('drafts') }}{% endblock %}
+{% block content %}
+<div class="mb-8 flex items-end justify-between">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">{{ t('drafts') }}</h1>
+    <p class="mt-1 text-sm text-slate-500">{{ t('drafts_desc', default='Manage your generated marketing copy.') }}</p>
+  </div>
+  <div class="flex gap-2 text-sm">
+    <a href="?status=all" class="rounded-lg px-3 py-1.5 font-medium {{ 'bg-indigo-100 text-indigo-700' if current_status == 'all' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('all') }}</a>
+    <a href="?status=draft" class="rounded-lg px-3 py-1.5 font-medium {{ 'bg-indigo-100 text-indigo-700' if current_status == 'draft' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('draft_status') }}</a>
+    <a href="?status=published" class="rounded-lg px-3 py-1.5 font-medium {{ 'bg-indigo-100 text-indigo-700' if current_status == 'published' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('published') }}</a>
+  </div>
+</div>
+
+{% if drafts_list %}
+<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+  {% for d in drafts_list %}
+  <a href="/drafts/{{ d.id }}"
+     class="rounded-xl border border-slate-200 bg-white p-5 hover:border-indigo-300 hover:shadow-sm transition-all">
+    <div class="flex items-center justify-between mb-2">
+      <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">{{ d.format.replace('_', ' ') }}</span>
+      {% set sc = 'published' if d.status == 'published' else 'draft_status' %}
+      <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold {{ 'bg-emerald-100 text-emerald-700' if d.status == 'published' else 'bg-slate-100 text-slate-600' }}">{{ t(sc) }}</span>
+    </div>
+    <p class="text-sm text-slate-700 line-clamp-3 mb-3">{{ d.prompt }}</p>
+    <div class="flex items-center justify-between text-xs text-slate-400">
+      <span>{{ d.domain or '—' }}</span>
+      <span>{{ d.updated_at[:10] }}</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
+  <p class="text-slate-500">{{ t('no_drafts') }}</p>
+</div>
+{% endif %}
+{% endblock %}

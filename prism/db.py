@@ -107,6 +107,52 @@ CREATE TABLE IF NOT EXISTS citations (
 );
 CREATE INDEX IF NOT EXISTS idx_citations_domain ON citations(domain);
 
+-- Content Studio (copyforge-style RAG copy generation)
+CREATE TABLE IF NOT EXISTS sites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+    domain TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',  -- pending|crawling|ready|failed
+    crawl_error TEXT,
+    page_count INTEGER NOT NULL DEFAULT 0,
+    last_crawled TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (tenant_id, domain)
+);
+
+CREATE TABLE IF NOT EXISTS pages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    path TEXT NOT NULL DEFAULT '',
+    title TEXT DEFAULT '',
+    headings TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '',
+    crawled_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (site_id, url)
+);
+
+CREATE TABLE IF NOT EXISTS chunks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    page_id INTEGER NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+    site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+    seq INTEGER NOT NULL DEFAULT 0,
+    content TEXT NOT NULL DEFAULT '',
+    embedding TEXT NOT NULL DEFAULT ''  -- comma-separated float32 values
+);
+
+CREATE TABLE IF NOT EXISTS drafts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+    site_id INTEGER REFERENCES sites(id) ON DELETE SET NULL,
+    prompt TEXT NOT NULL DEFAULT '',
+    format TEXT NOT NULL DEFAULT 'linkedin_post',
+    content TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'draft',  -- draft|published
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL DEFAULT ''

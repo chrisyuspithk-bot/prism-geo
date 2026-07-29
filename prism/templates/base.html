@@ -44,6 +44,11 @@
     <a href="{{ href }}"
        class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == key else 'text-slate-600 hover:bg-slate-100' }}">{{ label }}</a>
     {% endfor %}
+    <p class="px-2 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ t('content_studio') }}</p>
+    <a href="/sites"
+       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'sites' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('sites') }}</a>
+    <a href="/drafts"
+       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'drafts' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('drafts') }}</a>
     <p class="px-2 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ t('settings') }}</p>
     <a href="/settings/brand"
        class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'settings-brand' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('brand_competitors') }}</a>
