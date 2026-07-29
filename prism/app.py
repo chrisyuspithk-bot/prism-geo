@@ -384,8 +384,9 @@ def save_schedule(enabled: str = Form("0"), hour: str = Form("2")):
 @app.post("/admin/reset-db")
 def reset_db():
     with connect() as conn:
-        for table in ("runs", "mentions", "citations", "prompts", "brands",
-                       "competitors", "jobs", "settings", "tenants"):
+        for table in ("mentions", "citations", "runs", "models",
+                       "competitors", "brands", "prompts", "jobs",
+                       "settings", "tenants"):
             conn.execute(f"DELETE FROM {table}")
             conn.execute("DELETE FROM sqlite_sequence WHERE name = ?", (table,))
     return RedirectResponse("/", status_code=303)
