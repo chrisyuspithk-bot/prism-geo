@@ -151,6 +151,8 @@ STRINGS = {
     "competitors_label": {"zh-TW": "競爭者", "en": "Competitors"},
     "competitors_hint": {"zh-TW": "逗號分隔 — 將在聲量佔比中並排顯示", "en": "comma separated — you'll show up side-by-side in Share of Voice"},
     "save": {"zh-TW": "儲存", "en": "Save"},
+    "saving": {"zh-TW": "處理中", "en": "Saving"},
+    "saving_setup_hint": {"zh-TW": "正在擷取網站資訊並生成提問，請稍候", "en": "Fetching website info and generating prompts — this may take a moment"},
     "edit": {"zh-TW": "編輯", "en": "Edit"},
     "add_competitor_placeholder": {"zh-TW": "競爭者名稱 — 例如 Nike", "en": "Competitor name — e.g. Nike"},
     "add_competitor_btn": {"zh-TW": "新增", "en": "Add"},
