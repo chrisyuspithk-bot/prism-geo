@@ -99,7 +99,21 @@ def fetch_page(url: str, timeout: int = 15) -> dict | None:
 
     text = _clean(body)
     if len(text) < 20:
-        return None
+        # JS-rendered page — fall back to meta/og description, then title
+        desc = ""
+        for m in re.finditer(
+            r'<meta[^>]*(?:name="description"|property="og:description")[^>]*content="([^"]+)"',
+            html, re.I,
+        ):
+            t = _clean(m.group(1))
+            if len(t) > len(desc):
+                desc = t
+        if len(desc) >= 20:
+            text = desc
+        elif title and len(title) >= 10:
+            text = title
+        else:
+            return None
 
     parsed = urlparse(url)
     return {
