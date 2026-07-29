@@ -30,6 +30,9 @@ async def startup() -> None:
     init_db()
     jobs.recover_stale_jobs()
     jobs.ensure_worker()
+    # Reset any sites stuck in 'crawling' from a previous crash
+    with connect() as conn:
+        conn.execute("UPDATE sites SET status = 'failed', crawl_error = 'Server restarted during crawl' WHERE status = 'crawling'")
     scheduler.ensure_scheduler()
 
 
@@ -666,13 +669,27 @@ def _run_crawl(site_id: int, domain: str):
                         (site_id, page["url"], page["path"], page["title"], page["headings"], page["content"]),
                     )
                     page_id = cur.lastrowid
-                    chunks_list = chunk.chunk_text(page["content"])
-                    for i, ch in enumerate(chunks_list):
-                        vec = embeddings.embed_one(ch)
+                    for i, ch in enumerate(chunk.chunk_text(page["content"])):
                         conn.execute(
-                            "INSERT INTO chunks (page_id, site_id, seq, content, embedding) VALUES (?, ?, ?, ?, ?)",
-                            (page_id, site_id, i, ch, embeddings.pack(vec)),
+                            "INSERT INTO chunks (page_id, site_id, seq, content) VALUES (?, ?, ?, ?)",
+                            (page_id, site_id, i, ch),
                         )
+
+            # Compute embeddings (slow, do it outside the DB write lock)
+            with connect() as conn:
+                rows = conn.execute(
+                    "SELECT id, content FROM chunks WHERE site_id = ? AND embedding IS NULL",
+                    (site_id,),
+                ).fetchall()
+            for r in rows:
+                vec = embeddings.embed_one(r["content"])
+                with connect() as conn:
+                    conn.execute(
+                        "UPDATE chunks SET embedding = ? WHERE id = ?",
+                        (embeddings.pack(vec), r["id"]),
+                    )
+
+            with connect() as conn:
                 conn.execute(
                     "UPDATE sites SET status = 'ready', page_count = ?, last_crawled = datetime('now') WHERE id = ?",
                     (len(pages_data), site_id),
