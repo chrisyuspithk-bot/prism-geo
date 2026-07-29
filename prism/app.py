@@ -381,6 +381,16 @@ def save_schedule(enabled: str = Form("0"), hour: str = Form("2")):
     return RedirectResponse("/settings/keys?saved=1", status_code=303)
 
 
+@app.post("/admin/reset-db")
+def reset_db():
+    with connect() as conn:
+        for table in ("runs", "mentions", "citations", "prompts", "brands",
+                       "competitors", "jobs", "settings", "tenants"):
+            conn.execute(f"DELETE FROM {table}")
+            conn.execute("DELETE FROM sqlite_sequence WHERE name = ?", (table,))
+    return RedirectResponse("/", status_code=303)
+
+
 # --- Prompt management ----------------------------------------------------------
 
 @app.post("/prompts")
