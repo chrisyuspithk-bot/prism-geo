@@ -125,7 +125,7 @@ def find_citations(text: str, brand_domains: set[str] | None = None) -> list[dic
         domain = normalize_domain(url)
         if not domain:
             continue
-        key = url.lower().replace("://www.", "://", 1)
+        key = url.lower().replace("://www.", "://", 1).rstrip("/")
         if key not in seen:
             seen[key] = {
                 "url": key,
