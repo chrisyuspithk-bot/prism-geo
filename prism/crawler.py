@@ -20,7 +20,14 @@ def discover(domain: str, timeout: int = 15) -> list[str]:
         urls = [base]
     if _MAX_PAGES > 0:
         urls = urls[:_MAX_PAGES]
-    return urls
+    # Deduplicate preserving order
+    seen: set[str] = set()
+    unique: list[str] = []
+    for u in urls:
+        if u not in seen:
+            seen.add(u)
+            unique.append(u)
+    return unique
 
 
 def _is_sitemap(url: str) -> bool:
@@ -54,13 +61,16 @@ def _parse_sitemap(url: str, timeout: int, depth: int = 0) -> list[str]:
 def _from_sitemap(base: str, timeout: int) -> list[str]:
     """Try common sitemap paths and parse them."""
     paths = [
-        "/sitemap.xml", "/sitemap_index.xml", "/sitemap-index.xml",
-        "/post-sitemap.xml", "/page-sitemap.xml", "/pages-sitemap.xml",
+        "/sitemap.xml", "/sitemap_index.xml",
+        "/post-sitemap.xml", "/page-sitemap.xml",
+        "/wp-sitemap.xml",  # WordPress
+        "/sitemap-index.xml", "/pages-sitemap.xml",
         "/blog-sitemap.xml", "/blog-posts-sitemap.xml",
-        "/wp-sitemap.xml",  # WordPress default
     ]
-    for path in paths:
-        urls = _parse_sitemap(base + path, timeout)
+    short_timeout = max(timeout // 3, 5)
+    for i, path in enumerate(paths):
+        t = timeout if i == 0 else short_timeout
+        urls = _parse_sitemap(base + path, t)
         if urls:
             return urls
     return []

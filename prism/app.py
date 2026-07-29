@@ -654,7 +654,11 @@ def _run_crawl(site_id: int, domain: str):
             urls = crawler.discover(domain)
             print(f"[crawl:{site_id}] discovered {len(urls)} URLs for {domain}")
             pages_data: list[dict] = []
+            seen_urls: set[str] = set()
             for url in urls:
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
                 page = crawler.fetch_page(url)
                 if page is not None:
                     pages_data.append(page)
