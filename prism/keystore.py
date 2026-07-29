@@ -21,7 +21,7 @@ PROVIDERS = {
     "claude": ("ANTHROPIC_API_KEY", "https://openrouter.ai/api", "anthropic/claude-sonnet-4",
                "Claude — via OpenRouter, or point base URL at an Anthropic-compatible endpoint"),
     "gemini": ("GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta",
-               "gemini-2.0-flash",
+               "gemini-2.5-flash",
                "Gemini — Google's native API (key in query string, not Bearer header)"),
     "perplexity": ("PERPLEXITY_API_KEY", "https://api.perplexity.ai", "sonar",
                    "Perplexity — Sonar API is OpenAI-compatible"),
