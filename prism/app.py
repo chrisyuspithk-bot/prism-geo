@@ -653,6 +653,7 @@ def _run_crawl(site_id: int, domain: str):
     def _do():
         try:
             urls = crawler.discover(domain)
+            print(f"[crawl:{site_id}] discovered {len(urls)} URLs for {domain}")
             if not urls:
                 raise RuntimeError(f"No URLs discovered for {domain} (sitemap empty, homepage fallback failed)")
             pages_data: list[dict] = []
@@ -662,6 +663,7 @@ def _run_crawl(site_id: int, domain: str):
                     page = f.result()
                     if page is not None:
                         pages_data.append(page)
+            print(f"[crawl:{site_id}] fetched {len(pages_data)} pages (of {len(urls)} URLs)")
 
             with connect() as conn:
                 conn.execute("DELETE FROM pages WHERE site_id = ?", (site_id,))
@@ -697,6 +699,7 @@ def _run_crawl(site_id: int, domain: str):
                     (len(pages_data), site_id),
                 )
         except Exception as e:
+            print(f"[crawl:{site_id}] FAILED: {e}", flush=True)
             with connect() as conn:
                 conn.execute(
                     "UPDATE sites SET status = 'failed', crawl_error = ? WHERE id = ?",
