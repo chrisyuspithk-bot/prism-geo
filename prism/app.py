@@ -383,10 +383,12 @@ def save_schedule(enabled: str = Form("0"), hour: str = Form("2")):
 
 @app.post("/admin/reset-db")
 def reset_db():
-    import os
-    conn = connect().__enter__()
-    db_path = conn.execute("PRAGMA database_list").fetchone()[2]
-    conn.close()
+    import os, sqlite3
+    from .db import DB_PATH
+    # Close any open connections by getting path from a fresh connect
+    tmp = sqlite3.connect(str(DB_PATH))
+    db_path = tmp.execute("PRAGMA database_list").fetchone()[2]
+    tmp.close()
     os.remove(db_path)
     init_db()
     return RedirectResponse("/", status_code=303)
