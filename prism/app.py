@@ -251,6 +251,7 @@ def visibility(request: Request):
 @app.get("/report/download")
 def download_report(request: Request, period: str = "monthly"):
     tenant = _tenant(request)
+    lang = _resolve_lang(request)
     days, model_id = _filters(request)
     tname = tenant["current"].get("name", "")
     tid = tenant["id"]
@@ -258,7 +259,7 @@ def download_report(request: Request, period: str = "monthly"):
         own = workspace.own_brand(conn, tid)
         brand_name = own["name"] if own else tname or "Brand"
     try:
-        pdf = report.generate(tid, tname, brand_name, period, model_id)
+        pdf = report.generate(tid, tname, brand_name, period, model_id, lang=lang)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
     filename = f"prism-geo-{period}-{brand_name.lower().replace(' ', '-')}.pdf"

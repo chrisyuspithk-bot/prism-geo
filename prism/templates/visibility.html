@@ -9,8 +9,8 @@
   <div class="flex items-center gap-2">
     <div class="flex items-center gap-1 text-sm text-slate-500 mr-2">
       <span>{{ t('download_report') }}:</span>
-      <a href="/report/download?period=weekly{{ '&model=' ~ request.query_params.model if request.query_params.get('model') }}" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium hover:bg-slate-50 hover:text-indigo-600 transition-colors">{{ t('weekly') }}</a>
-      <a href="/report/download?period=monthly{{ '&model=' ~ request.query_params.model if request.query_params.get('model') }}" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium hover:bg-slate-50 hover:text-indigo-600 transition-colors">{{ t('monthly') }}</a>
+      <a href="/report/download?period=weekly&amp;lang={{ lang }}{{ '&model=' ~ request.query_params.model if request.query_params.get('model') }}" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium hover:bg-slate-50 hover:text-indigo-600 transition-colors">{{ t('weekly') }}</a>
+      <a href="/report/download?period=monthly&amp;lang={{ lang }}{{ '&model=' ~ request.query_params.model if request.query_params.get('model') }}" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium hover:bg-slate-50 hover:text-indigo-600 transition-colors">{{ t('monthly') }}</a>
     </div>
     <form method="get" class="flex gap-2 text-sm">
       <select name="model" onchange="this.form.submit()" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5">
