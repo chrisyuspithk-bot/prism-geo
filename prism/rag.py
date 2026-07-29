@@ -74,14 +74,15 @@ YOUR RESPONSE:"""
 
 def generate_with_llm(prompt: str) -> str:
     """Call the configured LLM to generate copy using the first available engine."""
-    from .keystore import active_engines, get_key
+    from .keystore import active_engines, get
 
     engines = active_engines()
     if not engines:
         return "[Error: No LLM engine configured. Set an API key in Settings → Engine Keys.]"
 
-    engine_name = engines[0]
-    key = get_key(engine_name)
+    engine_info = engines[0]
+    engine_name = engine_info["name"]
+    key = get(engine_name)
 
     # Map engine name to OpenAI-compatible endpoint
     import httpx
