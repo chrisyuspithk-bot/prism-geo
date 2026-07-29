@@ -418,7 +418,7 @@ def settings_prompts(request: Request):
         total = q1(conn, "SELECT COUNT(*) AS n FROM runs WHERE tenant_id = ?", (tenant["id"],))["n"]
         rows = q(conn,
                  "SELECT p.*, (SELECT COUNT(*) FROM runs r WHERE r.prompt_id = p.id) AS runs"
-                 " FROM prompts p WHERE p.tenant_id = ? ORDER BY p.id", (tenant["id"],))
+                 " FROM prompts p WHERE p.tenant_id = ? AND p.active = 1 ORDER BY p.id", (tenant["id"],))
     return templates.TemplateResponse(
         request, "settings_prompts.html",
         context=ctx(request, page="settings-prompts", prompts=[dict(r) for r in rows],
