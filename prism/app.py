@@ -648,22 +648,17 @@ def _run_crawl(site_id: int, domain: str):
         conn.execute("UPDATE sites SET status = 'crawling', crawl_error = NULL WHERE id = ?", (site_id,))
 
     import threading
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     def _do():
         try:
             urls = crawler.discover(domain)
             print(f"[crawl:{site_id}] discovered {len(urls)} URLs for {domain}")
-            if not urls:
-                raise RuntimeError(f"No URLs discovered for {domain} (sitemap empty, homepage fallback failed)")
             pages_data: list[dict] = []
-            with ThreadPoolExecutor(max_workers=8) as ex:
-                futures = {ex.submit(crawler.fetch_page, u): u for u in urls}
-                for f in as_completed(futures):
-                    page = f.result()
-                    if page is not None:
-                        pages_data.append(page)
-            print(f"[crawl:{site_id}] fetched {len(pages_data)} pages (of {len(urls)} URLs)")
+            for url in urls:
+                page = crawler.fetch_page(url)
+                if page is not None:
+                    pages_data.append(page)
+            print(f"[crawl:{site_id}] fetched {len(pages_data)} pages")
 
             with connect() as conn:
                 conn.execute("DELETE FROM pages WHERE site_id = ?", (site_id,))
