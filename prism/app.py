@@ -645,18 +645,22 @@ def _run_crawl(site_id: int, domain: str):
         conn.execute("UPDATE sites SET status = 'crawling', crawl_error = NULL WHERE id = ?", (site_id,))
 
     import threading
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     def _do():
         try:
             urls = crawler.discover(domain)
+            pages_data: list[dict] = []
+            with ThreadPoolExecutor(max_workers=8) as ex:
+                futures = {ex.submit(crawler.fetch_page, u): u for u in urls}
+                for f in as_completed(futures):
+                    page = f.result()
+                    if page is not None:
+                        pages_data.append(page)
+
             with connect() as conn:
-                # Delete old pages/chunks
                 conn.execute("DELETE FROM pages WHERE site_id = ?", (site_id,))
-                page_count = 0
-                for url in urls:
-                    page = crawler.fetch_page(url)
-                    if page is None:
-                        continue
+                for page in pages_data:
                     cur = conn.execute(
                         "INSERT INTO pages (site_id, url, path, title, headings, content) VALUES (?, ?, ?, ?, ?, ?)",
                         (site_id, page["url"], page["path"], page["title"], page["headings"], page["content"]),
@@ -669,10 +673,9 @@ def _run_crawl(site_id: int, domain: str):
                             "INSERT INTO chunks (page_id, site_id, seq, content, embedding) VALUES (?, ?, ?, ?, ?)",
                             (page_id, site_id, i, ch, embeddings.pack(vec)),
                         )
-                    page_count += 1
                 conn.execute(
                     "UPDATE sites SET status = 'ready', page_count = ?, last_crawled = datetime('now') WHERE id = ?",
-                    (page_count, site_id),
+                    (len(pages_data), site_id),
                 )
         except Exception as e:
             with connect() as conn:
