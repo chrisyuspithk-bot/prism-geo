@@ -4,9 +4,7 @@
 <div class="mb-8">
   <h1 class="text-2xl font-semibold tracking-tight">{{ t('tenants_page_title') }}</h1>
   <p class="mt-1 max-w-2xl text-sm text-slate-500">
-    Each client is a workspace — one tracked brand with its own domain, competitors
-    and prompt set. Engine keys are shared across all clients and configured once
-    under <a href="/settings/keys" class="font-medium text-indigo-600 hover:underline">Engine keys</a>.
+    {{ t('tenants_page_desc') | safe }}
   </p>
 </div>
 
@@ -23,30 +21,30 @@
     <thead>
       <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
         <th class="px-5 py-3">{{ t('client_col') }}</th><th class="px-5 py-3">{{ t('domain_col') }}</th>
-        <th class="px-5 py-3">{{ t('competitors_col') }}</th><th class="px-5 py-3">Prompts</th>
+        <th class="px-5 py-3">{{ t('competitors_col') }}</th><th class="px-5 py-3">{{ t('prompts_table_col') }}</th>
         <th class="px-5 py-3">{{ t('runs_col') }}</th><th class="px-5 py-3"></th>
       </tr>
     </thead>
     <tbody>
-      {% for t in tenants %}
-      <tr class="border-b border-slate-100 last:border-0 {{ 'bg-indigo-50/40' if t.id == tenant.current.id }}">
+      {% for c in tenants %}
+      <tr class="border-b border-slate-100 last:border-0 {{ 'bg-indigo-50/40' if c.id == tenant.current.id }}">
         <td class="px-5 py-3">
           <form method="post" action="/tenant/select" class="inline">
-            <input type="hidden" name="tenant" value="{{ t.id }}">
+            <input type="hidden" name="tenant" value="{{ c.id }}">
             <input type="hidden" name="back" value="/">
-            <button class="font-medium text-slate-900 hover:text-indigo-600">{{ t.name }}</button>
+            <button class="font-medium text-slate-900 hover:text-indigo-600">{{ c.name }}</button>
           </form>
-          {% if t.id == tenant.current.id %}
+          {% if c.id == tenant.current.id %}
           <span class="ml-2 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">{{ t('active_tag') }}</span>
           {% endif %}
         </td>
-        <td class="px-5 py-3 text-slate-500">{{ t.website or '—' }}</td>
-        <td class="px-5 py-3 text-slate-500">{{ t.competitors }}</td>
-        <td class="px-5 py-3 text-slate-500">{{ t.prompts }}</td>
-        <td class="px-5 py-3 text-slate-500">{{ t.runs }}</td>
+        <td class="px-5 py-3 text-slate-500">{{ c.website or '—' }}</td>
+        <td class="px-5 py-3 text-slate-500">{{ c.competitors }}</td>
+        <td class="px-5 py-3 text-slate-500">{{ c.prompts }}</td>
+        <td class="px-5 py-3 text-slate-500">{{ c.runs }}</td>
         <td class="px-5 py-3 text-right">
-          <form method="post" action="/tenants/{{ t.id }}/delete"
-                onsubmit="return confirm('{{ t('"confirm_delete"', name=t.name) }}')">
+          <form method="post" action="/tenants/{{ c.id }}/delete"
+                onsubmit="return confirm('{{ t('confirm_delete', name=c.name) }}')">
             <button class="text-xs text-rose-500 hover:underline">{{ t('delete') }}</button>
           </form>
         </td>
