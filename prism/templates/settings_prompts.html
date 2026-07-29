@@ -31,7 +31,7 @@
         <td class="px-5 py-3 text-slate-500">{{ p.runs }}</td>
         <td class="px-5 py-3 text-right">
           <button onclick="editRow({{ p.id }})" class="text-xs text-indigo-600 hover:underline mr-2">{{ t('edit') }}</button>
-          <form method="post" action="/prompts/{{ p.id }}/delete" onsubmit="return confirm('Delete this prompt and its history?')" class="inline">
+          <form method="post" action="/prompts/{{ p.id }}/delete" onsubmit="return confirm('{{ t('confirm_delete_prompt') }}')" class="inline">
             <button class="text-xs text-rose-500 hover:underline">{{ t('delete') }}</button>
           </form>
         </td>

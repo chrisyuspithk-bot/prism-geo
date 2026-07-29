@@ -133,6 +133,7 @@ STRINGS = {
     "delete": {"zh-TW": "刪除", "en": "Delete"},
     "no_clients": {"zh-TW": "尚無客戶 — 請在上方新增第一個。", "en": "No clients yet — add your first above."},
     "confirm_delete": {"zh-TW": "確定要刪除 {name} 及其所有評估、提問和競爭者資料？", "en": "Delete {name} and all its runs, prompts and competitors?"},
+    "confirm_delete_prompt": {"zh-TW": "確定要刪除此提問？", "en": "Delete this prompt?"},
 
     # --- settings: prompts ---
     "settings_prompts_title": {"zh-TW": "提問管理", "en": "Prompt management"},
