@@ -186,7 +186,7 @@ async def generate_prompts(brand: str, competitors: list[str],
                     raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
                 else:
                     resp = await client.post(
-                        f"{api_base.rstrip('/')}/v1/chat/completions",
+                        f"{api_base.rstrip('/')}/chat/completions",
                         headers={"Authorization": f"Bearer {api_key}"},
                         json={"model": model, "temperature": 0.8,
                               "messages": [{"role": "user", "content": ask}]},

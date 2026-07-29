@@ -16,16 +16,16 @@ from .db import connect
 
 # engine key -> (env var, default base url, default model, help text)
 PROVIDERS = {
-    "chatgpt": ("OPENAI_API_KEY", "https://api.openai.com", "gpt-4o",
+    "chatgpt": ("OPENAI_API_KEY", "https://api.openai.com/v1", "gpt-4o",
                 "OpenAI — the engine behind ChatGPT answers"),
-    "claude": ("ANTHROPIC_API_KEY", "https://openrouter.ai/api", "anthropic/claude-sonnet-4",
+    "claude": ("ANTHROPIC_API_KEY", "https://openrouter.ai/api/v1", "anthropic/claude-sonnet-4",
                "Claude — via OpenRouter, or point base URL at an Anthropic-compatible endpoint"),
     "gemini": ("GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta",
                "gemini-2.5-flash",
                "Gemini — Google's native API (key in query string, not Bearer header)"),
     "perplexity": ("PERPLEXITY_API_KEY", "https://api.perplexity.ai", "sonar",
-                   "Perplexity — Sonar API is OpenAI-compatible"),
-    "deepseek": ("DEEPSEEK_API_KEY", "https://api.deepseek.com", "deepseek-chat",
+                   "Perplexity — Sonar API is OpenAI-compatible (no /v1 prefix)"),
+    "deepseek": ("DEEPSEEK_API_KEY", "https://api.deepseek.com/v1", "deepseek-chat",
                  "DeepSeek — cheap OpenAI-compatible chat, good default for trying things out"),
     "custom": ("PRISM_API_KEY", "", "",
                "Custom — any OpenAI-compatible endpoint (set base URL + model)"),

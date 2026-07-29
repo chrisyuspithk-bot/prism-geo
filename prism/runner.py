@@ -69,7 +69,7 @@ async def _query_openai(prompt: str, key: str, base: str, model: str) -> tuple[s
     try:
         async with httpx.AsyncClient(timeout=90) as client:
             resp = await client.post(
-                f"{base.rstrip('/')}/v1/chat/completions",
+                f"{base.rstrip('/')}/chat/completions",
                 headers={"Authorization": f"Bearer {key}"},
                 json=payload,
             )
