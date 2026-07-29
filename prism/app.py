@@ -160,7 +160,8 @@ async def setup_save(request: Request, name: str = Form(...),
 
     created = 0
     site = await analyze_website(website.strip())
-    prompts = await generate_prompts(name.strip(), comp_list, site)
+    lang = _resolve_lang(request)
+    prompts = await generate_prompts(name.strip(), comp_list, site, lang=lang)
     with connect() as conn:
         for p in prompts:
             conn.execute("INSERT INTO prompts (text, tags, tenant_id) VALUES (?, ?, ?)",

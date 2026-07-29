@@ -64,9 +64,19 @@ GENERIC_PROMPTS = [
     ("Which {market} brands are most reliable?", "trust"),
 ]
 
+GENERIC_PROMPTS_ZH = [
+    ("{year} 年最好的 {market} 品牌有哪些？", "comparison"),
+    ("新手適合的 {market} 推薦", "recommendation"),
+    ("{brand} 跟 {competitor} 哪個比較好？", "vs"),
+    ("{brand} 的替代選擇有哪些？", "alternatives"),
+    ("平價 {market} 推薦", "budget"),
+    ("哪些 {market} 品牌最值得信賴？", "trust"),
+]
+
 
 async def generate_prompts(brand: str, competitors: list[str],
-                           site: dict, n: int = 10) -> list[dict]:
+                           site: dict, n: int = 10,
+                           lang: str = "en") -> list[dict]:
     """Generate buyer-style tracking prompts. Falls back to generic templates."""
     comp_list = ", ".join(competitors) if competitors else "its main competitors"
     context = ""
@@ -77,16 +87,28 @@ async def generate_prompts(brand: str, competitors: list[str],
 
     _, api_key, api_base, model = keystore.active_config()
     if api_key:
-        ask = (
-            f"You help set up AI-visibility tracking for the brand '{brand}'. "
-            f"Its competitors: {comp_list}.{context}\n\n"
-            f"List {n} short questions a potential customer would ask an AI answer "
-            f"engine when researching this market — a mix of comparisons, "
-            f"'best X for Y', alternatives, budget and trust questions. "
-            f"Return ONLY a JSON array of objects with keys text and tag "
-            f"(tag is one short lowercase word like comparison, budget, vs, "
-            f"alternatives, trust, recommendation). No markdown."
-        )
+        if lang == "zh-TW":
+            ask = (
+                f"你正在協助設定品牌「{brand}」的 AI 可見度追蹤。"
+                f"競爭者：{comp_list}。{context}\n\n"
+                f"請列出 {n} 個潛在客戶在 AI 答案引擎上研究這個市場時可能會問的"
+                f"簡短問題——請涵蓋比較、推薦、替代方案、預算和信任度等不同類型。"
+                f"只回傳 JSON 陣列，每個物件包含 text 和 tag 欄位"
+                f"（tag 使用簡短英文單字，例如 comparison, budget, vs, "
+                f"alternatives, trust, recommendation）。"
+                f"所有問題必須使用繁體中文撰寫。不要使用 markdown。"
+            )
+        else:
+            ask = (
+                f"You help set up AI-visibility tracking for the brand '{brand}'. "
+                f"Its competitors: {comp_list}.{context}\n\n"
+                f"List {n} short questions a potential customer would ask an AI answer "
+                f"engine when researching this market — a mix of comparisons, "
+                f"'best X for Y', alternatives, budget and trust questions. "
+                f"Return ONLY a JSON array of objects with keys text and tag "
+                f"(tag is one short lowercase word like comparison, budget, vs, "
+                f"alternatives, trust, recommendation). No markdown."
+            )
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 resp = await client.post(
@@ -113,9 +135,10 @@ async def generate_prompts(brand: str, competitors: list[str],
     market = re.sub(r"[|—–-].*$", "", market).strip() or "products"
     first_comp = competitors[0] if competitors else "competitors"
     from datetime import date
+    templates = GENERIC_PROMPTS_ZH if lang == "zh-TW" else GENERIC_PROMPTS
     return [
         {"text": t.format(market=market, brand=brand, competitor=first_comp,
                           year=date.today().year),
          "tag": tag}
-        for t, tag in GENERIC_PROMPTS
+        for t, tag in templates
     ]
