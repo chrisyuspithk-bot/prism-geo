@@ -257,7 +257,10 @@ def download_report(request: Request, period: str = "monthly"):
     with connect() as conn:
         own = workspace.own_brand(conn, tid)
         brand_name = own["name"] if own else tname or "Brand"
-    pdf = report.generate(tid, tname, brand_name, period, model_id)
+    try:
+        pdf = report.generate(tid, tname, brand_name, period, model_id)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
     filename = f"prism-geo-{period}-{brand_name.lower().replace(' ', '-')}.pdf"
     from fastapi.responses import Response
     return Response(pdf, media_type="application/pdf",
