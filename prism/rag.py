@@ -1,5 +1,7 @@
 """RAG: retrieve relevant chunks and generate grounded copy via LLM."""
 
+import httpx
+
 from . import embeddings
 from .db import connect, q
 
@@ -74,7 +76,7 @@ YOUR RESPONSE:"""
 
 def generate_with_llm(prompt: str) -> str:
     """Call the configured LLM to generate copy using the first available engine."""
-    from .keystore import active_engines, get
+    from .keystore import active_engines
 
     engines = active_engines()
     if not engines:
@@ -82,26 +84,9 @@ def generate_with_llm(prompt: str) -> str:
 
     engine_info = engines[0]
     engine_name = engine_info["name"]
-    key = get(engine_name)
-
-    # Map engine name to OpenAI-compatible endpoint
-    import httpx
-    base_urls = {
-        "deepseek": "https://api.deepseek.com/v1",
-        "chatgpt": "https://api.openai.com/v1",
-        "claude": "https://api.anthropic.com/v1",
-        "gemini": "https://generativelanguage.googleapis.com/v1beta",
-        "perplexity": "https://api.perplexity.com",
-    }
-    models = {
-        "deepseek": "deepseek-chat",
-        "chatgpt": "gpt-4o-mini",
-        "claude": "claude-3-haiku-20240307",
-        "gemini": "gemini-2.0-flash",
-        "perplexity": "llama-3.1-sonar-small-128k-online",
-    }
-    base = base_urls.get(engine_name, base_urls["deepseek"])
-    model = models.get(engine_name, models["deepseek"])
+    key = engine_info["api_key"]
+    base = engine_info.get("base_url") or "https://api.deepseek.com/v1"
+    model = engine_info.get("model") or "deepseek-chat"
 
     if engine_name == "gemini":
         try:

@@ -21,22 +21,46 @@ def discover(domain: str, timeout: int = 15) -> list[str]:
     return urls[:_MAX_PAGES]
 
 
-def _from_sitemap(base: str, timeout: int) -> list[str]:
-    """Try /sitemap.xml and /sitemap_index.xml, return discovered URLs."""
-    for path in ("/sitemap.xml", "/sitemap_index.xml"):
-        try:
-            resp = httpx.get(base + path, headers=_HEADERS, timeout=timeout, follow_redirects=True)
-            if resp.status_code != 200:
+def _is_sitemap(url: str) -> bool:
+    return url.endswith(".xml") and "sitemap" in url.lower()
+
+
+def _parse_sitemap(url: str, timeout: int, depth: int = 0) -> list[str]:
+    """Parse a sitemap XML, following sitemap index references recursively."""
+    if depth > 2:
+        return []
+    try:
+        resp = httpx.get(url, headers=_HEADERS, timeout=timeout, follow_redirects=True)
+        if resp.status_code != 200:
+            return []
+        root = ET.fromstring(resp.text)
+        ns = "http://www.sitemaps.org/schemas/sitemap/0.9"
+        urls: list[str] = []
+        for loc in root.iter(f"{{{ns}}}loc"):
+            href = loc.text.strip() if loc.text else ""
+            if not href:
                 continue
-            root = ET.fromstring(resp.text)
-            ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-            urls = []
-            for loc in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc"):
-                urls.append(loc.text.strip())
-            if urls:
-                return urls
-        except Exception:
-            continue
+            if _is_sitemap(href):
+                urls.extend(_parse_sitemap(href, timeout, depth + 1))
+            else:
+                urls.append(href)
+        return urls
+    except Exception:
+        return []
+
+
+def _from_sitemap(base: str, timeout: int) -> list[str]:
+    """Try common sitemap paths and parse them."""
+    paths = [
+        "/sitemap.xml", "/sitemap_index.xml", "/sitemap-index.xml",
+        "/post-sitemap.xml", "/page-sitemap.xml", "/pages-sitemap.xml",
+        "/blog-sitemap.xml", "/blog-posts-sitemap.xml",
+        "/wp-sitemap.xml",  # WordPress default
+    ]
+    for path in paths:
+        urls = _parse_sitemap(base + path, timeout)
+        if urls:
+            return urls
     return []
 
 
