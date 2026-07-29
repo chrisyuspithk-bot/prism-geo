@@ -79,6 +79,9 @@ def delete_tenant(tenant_id: int) -> None:
         conn.execute("DELETE FROM mentions WHERE brand_id IN "
                      "(SELECT id FROM brands WHERE tenant_id = ?)", (tenant_id,))
         conn.execute("DELETE FROM brands WHERE tenant_id = ?", (tenant_id,))
+        # Content Studio data: sites cascade to pages cascade to chunks
+        conn.execute("DELETE FROM drafts WHERE tenant_id = ?", (tenant_id,))
+        conn.execute("DELETE FROM sites WHERE tenant_id = ?", (tenant_id,))
         conn.execute("DELETE FROM tenants WHERE id = ?", (tenant_id,))
 
 
