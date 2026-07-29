@@ -38,8 +38,19 @@ async def _query_gemini(prompt: str, key: str, base: str, model: str) -> tuple[s
     try:
         async with httpx.AsyncClient(timeout=90) as client:
             resp = await client.post(url, json=body)
-            resp.raise_for_status()
+            if resp.status_code >= 400:
+                detail = resp.text[:500]
+                try:
+                    err = resp.json()
+                    detail = str(err)
+                except Exception:
+                    pass
+                return "error", f"Gemini {resp.status_code}: {detail}"
             data = resp.json()
+            if not data.get("candidates"):
+                block = data.get("promptFeedback", {}).get("blockReason", "")
+                reason = f" (blocked: {block})" if block else ""
+                return "error", f"Gemini returned no candidates{reason}. Raw: {_json.dumps(data)[:500]}"
             return "ok", data["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as exc:
         return "error", str(exc)

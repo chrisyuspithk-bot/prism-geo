@@ -60,7 +60,8 @@
       <span class="font-medium text-slate-700">{{ r.model_name }}</span> · {{ r.ran_at }} ·
       {% if r.status == 'ok' %}<span class="text-emerald-600">ok</span>{% else %}<span class="text-rose-500">error</span>{% endif %}
     </summary>
-    <pre class="whitespace-pre-wrap border-t border-slate-100 px-5 py-4 text-sm leading-relaxed text-slate-700">{{ r.response_text }}</pre>
+    {% if r.error %}<pre class="whitespace-pre-wrap border-t border-rose-100 bg-rose-50 px-5 py-3 text-sm leading-relaxed text-rose-700">{{ r.error }}</pre>{% endif %}
+    <pre class="whitespace-pre-wrap border-t {{ 'border-rose-100' if r.error else 'border-slate-100' }} px-5 py-4 text-sm leading-relaxed text-slate-700">{{ r.response_text }}</pre>
   </details>
   {% endfor %}
 </div>
