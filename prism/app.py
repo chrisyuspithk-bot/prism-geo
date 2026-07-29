@@ -565,10 +565,13 @@ def generate_page(request: Request, site_id: int):
 @app.post("/api/generate")
 async def api_generate(request: Request):
     tenant = _tenant(request)
-    body = await request.json()
-    site_id = body.get("site_id")
-    prompt = body.get("prompt", "")
-    fmt = body.get("format", "linkedin_post")
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    site_id = int(body.get("site_id", 0))
+    prompt = str(body.get("prompt", ""))
+    fmt = str(body.get("format", "linkedin_post"))
 
     with connect() as conn:
         site = q1(conn, "SELECT * FROM sites WHERE id = ? AND tenant_id = ?", (site_id, tenant["id"]))
@@ -579,8 +582,11 @@ async def api_generate(request: Request):
     if not chunks_list:
         return JSONResponse({"error": "No relevant content found. Try re-crawling the site."}, 400)
 
-    system_prompt = rag.build_prompt(chunks_list, prompt, fmt)
-    content = rag.generate_with_llm(system_prompt)
+    try:
+        system_prompt = rag.build_prompt(chunks_list, prompt, fmt)
+        content = rag.generate_with_llm(system_prompt)
+    except Exception as e:
+        return JSONResponse({"error": f"Generation failed: {e}"}, 500)
 
     return JSONResponse({"content": content, "sources": len(chunks_list)})
 
