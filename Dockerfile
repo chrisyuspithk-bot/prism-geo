@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2 libffi8 shared-mime-info fonts-wqy-microhei \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir fastapi uvicorn jinja2 httpx python-multipart weasyprint fastembed
+RUN pip install --no-cache-dir fastapi uvicorn jinja2 httpx python-multipart weasyprint
 
 COPY prism/ ./prism/
 
