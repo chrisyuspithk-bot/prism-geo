@@ -6,7 +6,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 
-_MAX_PAGES = 20
+_MAX_PAGES = 0  # 0 = no limit
 _HEADERS = {"User-Agent": "prism-geo/1.0 (content-crawler)"}
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
@@ -18,7 +18,9 @@ def discover(domain: str, timeout: int = 15) -> list[str]:
     urls = _from_sitemap(base, timeout)
     if not urls:
         urls = [base]
-    return urls[:_MAX_PAGES]
+    if _MAX_PAGES > 0:
+        urls = urls[:_MAX_PAGES]
+    return urls
 
 
 def _is_sitemap(url: str) -> bool:
