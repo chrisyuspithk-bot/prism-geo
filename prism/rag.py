@@ -85,6 +85,8 @@ def generate_with_llm(prompt: str) -> str:
     engine_info = engines[0]
     engine_name = engine_info["name"]
     key = engine_info["api_key"]
+    if not key or not key.strip():
+        return "[Error: API key is empty. Set a valid key in Settings → Engine Keys.]"
     base = engine_info.get("base_url") or "https://api.deepseek.com/v1"
     model = engine_info.get("model") or "deepseek-chat"
 

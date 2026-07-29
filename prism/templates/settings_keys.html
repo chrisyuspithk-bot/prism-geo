@@ -63,6 +63,35 @@
   </div>
   {% endfor %}
 
+  {# Embedding API #}
+  <div class="rounded-xl border {{ 'border-indigo-200 ring-1 ring-indigo-100' if embedding_key else 'border-slate-200' }} bg-white p-5">
+    <div class="mb-3 flex items-center justify-between">
+      <div>
+        <h2 class="font-semibold">Embedding API</h2>
+        <p class="text-xs text-slate-400">Jina AI — embeddings for RAG content search. Without a key, falls back to local hashing.</p>
+      </div>
+      {% if embedding_key %}
+      <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+        Key set · {{ embedding_source }}
+      </span>
+      {% else %}
+      <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">No key</span>
+      {% endif %}
+    </div>
+    <form method="post" action="/settings/keys" class="grid gap-2 sm:grid-cols-[1fr_auto]">
+      <input type="hidden" name="provider" value="embedding">
+      <input name="api_key" type="password" autocomplete="off"
+             placeholder="{{ '••••••••••••••••' if embedding_key else 'Jina API key (jina_...)' }}"
+             class="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+      <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('save_keys') }}</button>
+    </form>
+    {% if embedding_source == 'ui' %}
+    <form method="post" action="/settings/keys/embedding/clear" class="mt-2">
+      <button class="text-xs text-rose-500 hover:underline">{{ t('clear') }}</button>
+    </form>
+    {% endif %}
+  </div>
+
   <p class="text-xs text-slate-400">
     UI-saved keys take priority over environment variables of the same name.
   </p>

@@ -6,6 +6,7 @@ evaluation is scoped to the tenant selected in the sidebar. Engine API keys are
 configured once, centrally, by the operator and shared across all tenants.
 """
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
@@ -368,9 +369,14 @@ def settings_keys(request: Request):
             "SELECT value FROM settings WHERE key = 'schedule_enabled'").fetchone()
         hour = conn.execute(
             "SELECT value FROM settings WHERE key = 'schedule_hour'").fetchone()
+        emb = conn.execute(
+            "SELECT value FROM settings WHERE key = 'embedding_api_key'").fetchone()
+    emb_key = (emb["value"] or "").strip() if emb else os.environ.get("JINA_API_KEY", "")
+    emb_source = "ui" if (emb and emb["value"]) else ("env" if os.environ.get("JINA_API_KEY") else "")
     return templates.TemplateResponse(
         request, "settings_keys.html",
         context=ctx(request, page="settings-keys", providers=keystore.provider_status(),
+                    embedding_key=emb_key, embedding_source=emb_source,
                     schedule_enabled=(enabled["value"] == "1") if enabled else True,
                     schedule_hour=int(hour["value"]) if hour else 2))
 
@@ -379,6 +385,9 @@ def settings_keys(request: Request):
 def save_keys(request: Request, provider: str = Form(...),
               api_key: str = Form(""), base_url: str = Form(""),
               model: str = Form(""), enabled: str = Form("0")):
+    if provider == "embedding":
+        keystore.set_value("embedding_api_key", api_key.strip() or "")
+        return RedirectResponse("/settings/keys?saved=1", status_code=303)
     if provider in keystore.PROVIDERS:
         if api_key.strip():
             keystore.set_value(f"{provider}_api_key", api_key.strip())
@@ -392,6 +401,9 @@ def save_keys(request: Request, provider: str = Form(...),
 
 @app.post("/settings/keys/{provider}/clear")
 def clear_key(provider: str):
+    if provider == "embedding":
+        keystore.set_value("embedding_api_key", "")
+        return RedirectResponse("/settings/keys", status_code=303)
     if provider in keystore.PROVIDERS:
         for suffix in ("api_key", "base_url", "model", "enabled"):
             keystore.set_value(f"{provider}_{suffix}", "")

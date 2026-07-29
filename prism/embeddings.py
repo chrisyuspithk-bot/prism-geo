@@ -1,11 +1,50 @@
-"""Embedding: tries API first, falls back to character n-gram hashing (zero-deps)."""
+"""Embedding: tries Jina API first (if key set), then fastembed, falls back to character n-gram hashing."""
 
+import httpx
 import json
+import os
 import re
 
-_DIM = 384
+_DIM = 2048  # Jina v4 default; n-gram fallback also uses this
 _CACHE: dict[str, list[float]] = {}
 _FASTEMBED = None
+_JINA_KEY: str | None = None
+_JINA_CHECKED = False
+
+
+def _get_jina_key() -> str | None:
+    global _JINA_KEY, _JINA_CHECKED
+    if _JINA_CHECKED:
+        return _JINA_KEY
+    _JINA_CHECKED = True
+    try:
+        from .db import connect
+        with connect() as conn:
+            row = conn.execute("SELECT value FROM settings WHERE key = 'embedding_api_key'").fetchone()
+        _JINA_KEY = (row["value"] or "").strip() if row else ""
+    except Exception:
+        pass
+    if not _JINA_KEY:
+        _JINA_KEY = os.environ.get("JINA_API_KEY", "")
+    return _JINA_KEY or None
+
+
+def _jina_embed(texts: list[str]) -> list[list[float]] | None:
+    key = _get_jina_key()
+    if not key:
+        return None
+    try:
+        resp = httpx.post(
+            "https://api.jina.ai/v1/embeddings",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json={"model": "jina-embeddings-v4", "task": "text-matching",
+                  "input": [{"text": t} for t in texts]},
+            timeout=30,
+        )
+        data = resp.json()
+        return [d["embedding"] for d in data.get("data", [])]
+    except Exception:
+        return None
 
 
 def _ngram_hash(text: str, dim: int = _DIM) -> list[float]:
@@ -57,7 +96,15 @@ def embed(texts: list[str]) -> list[list[float]]:
     if not to_compute:
         return results
 
-    # Try fastembed first
+    # Try Jina API first (fast, remote)
+    jina_vecs = _jina_embed([t for _, t in to_compute])
+    if jina_vecs and len(jina_vecs) == len(to_compute):
+        for (idx, text), vec in zip(to_compute, jina_vecs):
+            _CACHE[text] = vec
+            results[idx] = vec
+        return results
+
+    # Try fastembed (local, requires model download)
     if _try_fastembed():
         try:
             vecs = list(_FASTEMBED.embed([t for _, t in to_compute]))
@@ -82,6 +129,8 @@ def embed_one(text: str) -> list[float]:
 
 
 def cosine(a: list[float], b: list[float]) -> float:
+    if len(a) != len(b):
+        return 0.0
     dot = sum(x * y for x, y in zip(a, b))
     norm_a = sum(x * x for x in a) ** 0.5
     norm_b = sum(x * x for x in b) ** 0.5
