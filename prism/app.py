@@ -383,12 +383,12 @@ def save_schedule(enabled: str = Form("0"), hour: str = Form("2")):
 
 @app.post("/admin/reset-db")
 def reset_db():
-    with connect() as conn:
-        for table in ("mentions", "citations", "runs", "models",
-                       "competitors", "brands", "prompts", "jobs",
-                       "settings", "tenants"):
-            conn.execute(f"DELETE FROM {table}")
-            conn.execute("DELETE FROM sqlite_sequence WHERE name = ?", (table,))
+    import os
+    conn = connect().__enter__()
+    db_path = conn.execute("PRAGMA database_list").fetchone()[2]
+    conn.close()
+    os.remove(db_path)
+    init_db()
     return RedirectResponse("/", status_code=303)
 
 
