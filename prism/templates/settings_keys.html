@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Engine keys · prism{% endblock %}
+{% block title %}{{ t('title_settings_keys') }}{% endblock %}
 {% block content %}
 <div class="mb-8">
-  <h1 class="text-2xl font-semibold tracking-tight">Engine keys</h1>
+  <h1 class="text-2xl font-semibold tracking-tight">{{ t('keys_title') }}</h1>
   <p class="mt-1 max-w-2xl text-sm text-slate-500">
     You are the provider — these keys are set once here and shared by
     <span class="font-medium text-slate-700">every client</span>. Each evaluation runs a
@@ -13,11 +13,11 @@
 </div>
 
 {% if request.query_params.get('saved') %}
-<div class="mb-4 max-w-3xl rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">Saved.</div>
+<div class="mb-4 max-w-3xl rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">{{ t('saved_badge') }}</div>
 {% endif %}
 {% if request.query_params.get('need') %}
 <div class="mb-4 max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
-  Add and enable at least one engine below before running an evaluation.
+  {{ t('no_keys_warning') }}
 </div>
 {% endif %}
 
@@ -46,18 +46,18 @@
              class="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
       <input name="model" value="{{ p.model }}" placeholder="model"
              class="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
-      <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Save</button>
+      <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('save_keys') }}</button>
       <input name="base_url" value="{{ p.base_url }}" placeholder="base URL (leave blank if preset)"
              class="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none sm:col-span-2">
       <label class="flex items-center gap-2 text-sm text-slate-600">
         <input type="checkbox" name="enabled" value="1" {{ 'checked' if p.enabled }}
                class="h-4 w-4 rounded border-slate-300 text-indigo-600">
-        Enabled
+        {{ t('enabled') }}
       </label>
     </form>
     {% if p.source == 'ui' %}
     <form method="post" action="/settings/keys/{{ p.name }}/clear" class="mt-2">
-      <button class="text-xs text-rose-500 hover:underline">Remove stored key</button>
+      <button class="text-xs text-rose-500 hover:underline">{{ t('clear') }}</button>
     </form>
     {% endif %}
   </div>

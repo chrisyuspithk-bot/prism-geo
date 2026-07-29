@@ -1,25 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Share of Voice · prism{% endblock %}
+{% block title %}{{ t('title_sov') }}{% endblock %}
 {% block content %}
 <div class="mb-8 flex items-end justify-between">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Share of Voice</h1>
-    <p class="mt-1 text-sm text-slate-500">Which brands dominate the answers across all tracked prompts.</p>
+    <h1 class="text-2xl font-semibold tracking-tight">{{ t('sov_page_title') }}</h1>
+    <p class="mt-1 text-sm text-slate-500">{{ t('sov_page_desc') }}</p>
   </div>
   <form method="get" class="text-sm">
     <select name="days" onchange="this.form.submit()" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5">
-      {% for d in [7, 14, 30, 90] %}<option value="{{ d }}" {{ 'selected' if days == d }}>Last {{ d }} days</option>{% endfor %}
+      {% for d in [7, 14, 30, 90] %}<option value="{{ d }}" {{ 'selected' if days == d }}>{{ t('last_n_days', n=d) }}</option>{% endfor %}
     </select>
   </form>
 </div>
 
 <div class="grid gap-6 lg:grid-cols-5">
   <div class="rounded-xl border border-slate-200 bg-white p-6 lg:col-span-3">
-    <h2 class="mb-4 font-semibold">Daily share of voice</h2>
+    <h2 class="mb-4 font-semibold">{{ t('daily_sov') }}</h2>
     <div class="h-72"><canvas id="sov"></canvas></div>
   </div>
   <div class="rounded-xl border border-slate-200 bg-white p-6 lg:col-span-2">
-    <h2 class="mb-4 font-semibold">Mention share</h2>
+    <h2 class="mb-4 font-semibold">{{ t('mention_share') }}</h2>
     <div class="h-72"><canvas id="donut"></canvas></div>
   </div>
 </div>
@@ -28,9 +28,9 @@
   <table class="w-full text-sm">
     <thead>
       <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-        <th class="px-5 py-3">#</th><th class="px-5 py-3">Brand</th>
-        <th class="px-5 py-3">Mentions</th><th class="px-5 py-3 w-56">Share</th>
-        <th class="px-5 py-3">Avg. position</th><th class="px-5 py-3">Prompts</th>
+        <th class="px-5 py-3">#</th><th class="px-5 py-3">{{ t('brand_col') }}</th>
+        <th class="px-5 py-3">{{ t('mentions_col') }}</th><th class="px-5 py-3 w-56">Share</th>
+        <th class="px-5 py-3">{{ t('avg_position_col') }}</th><th class="px-5 py-3">{{ t('prompts_col') }}</th>
       </tr>
     </thead>
     <tbody>
@@ -39,7 +39,7 @@
         <td class="px-5 py-3 text-slate-400">{{ row.rank }}</td>
         <td class="px-5 py-3 font-medium">
           {{ row.brand }}
-          {% if row.is_own %}<span class="ml-1 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">You</span>{% endif %}
+          {% if row.is_own %}<span class="ml-1 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">{{ t('you_tag') }}</span>{% endif %}
         </td>
         <td class="px-5 py-3">{{ row.mentions }}</td>
         <td class="px-5 py-3">

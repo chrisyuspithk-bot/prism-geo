@@ -1,25 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Prompts · prism{% endblock %}
+{% block title %}{{ t('title_settings_prompts') }}{% endblock %}
 {% block content %}
 <div class="mb-8">
-  <h1 class="text-2xl font-semibold tracking-tight">Tracked prompts</h1>
-  <p class="mt-1 text-sm text-slate-500">The questions sent to answer engines on every evaluation cycle.</p>
+  <h1 class="text-2xl font-semibold tracking-tight">{{ t('settings_prompts_title') }}</h1>
+  <p class="mt-1 text-sm text-slate-500">{{ t('settings_prompts_desc') }}</p>
 </div>
 
 <form method="post" action="/prompts" class="mb-8 flex gap-2 rounded-xl border border-slate-200 bg-white p-4">
-  <input name="text" required placeholder="e.g. Best running shoes under $150"
+  <input name="text" required placeholder="{{ t('new_prompt_placeholder') }}"
          class="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
-  <input name="tags" placeholder="tags (comma separated)"
+  <input name="tags" placeholder="{{ t('tags_optional') }}"
          class="w-48 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
-  <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Add prompt</button>
+  <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('add_prompt') }}</button>
 </form>
 
 <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
   <table class="w-full text-sm">
     <thead>
       <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-        <th class="px-5 py-3">Prompt</th><th class="px-5 py-3">Tags</th>
-        <th class="px-5 py-3">Runs</th><th class="px-5 py-3"></th>
+        <th class="px-5 py-3">{{ t('prompts_col') }}</th><th class="px-5 py-3">Tags</th>
+        <th class="px-5 py-3">{{ t('runs_col') }}</th><th class="px-5 py-3"></th>
       </tr>
     </thead>
     <tbody>
@@ -30,7 +30,7 @@
         <td class="px-5 py-3 text-slate-500">{{ p.runs }}</td>
         <td class="px-5 py-3 text-right">
           <form method="post" action="/prompts/{{ p.id }}/delete" onsubmit="return confirm('Delete this prompt and its history?')">
-            <button class="text-xs text-rose-500 hover:underline">Delete</button>
+            <button class="text-xs text-rose-500 hover:underline">{{ t('delete') }}</button>
           </form>
         </td>
       </tr>
@@ -38,5 +38,5 @@
     </tbody>
   </table>
 </div>
-<p class="mt-4 text-xs text-slate-400">{{ total_runs }} total runs stored.</p>
+<p class="mt-4 text-xs text-slate-400">{{ t('total_runs_label') }} {{ total_runs }}</p>
 {% endblock %}

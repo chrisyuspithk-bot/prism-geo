@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}prism · AI visibility{% endblock %}</title>
+  <title>{% block title %}{{ t('title_default') }}{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <link rel="stylesheet" href="/static/app.css">
@@ -19,7 +19,7 @@
 
     {# Tenant (client) switcher — scopes every dashboard to one client #}
     <div class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-2">
-      <p class="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Client</p>
+      <p class="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ t('client') }}</p>
       <form method="post" action="/tenant/select">
         <input type="hidden" name="back" value="{{ request.url.path }}">
         <select name="tenant" onchange="this.form.submit()"
@@ -29,35 +29,47 @@
           {% endfor %}
         </select>
       </form>
-      <a href="/tenants" class="mt-1.5 block px-1 text-[11px] font-medium text-indigo-600 hover:underline">Manage clients →</a>
+      <a href="/tenants" class="mt-1.5 block px-1 text-[11px] font-medium text-indigo-600 hover:underline">{{ t('manage_clients') }}</a>
     </div>
 
-    <p class="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Dashboard</p>
+    <p class="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ t('dashboard') }}</p>
     {% set nav = [
-      ('overview', '/', 'Overview'),
-      ('visibility', '/visibility', 'Visibility'),
-      ('share-of-voice', '/share-of-voice', 'Share of Voice'),
-      ('citations', '/citations', 'Citations'),
-      ('opportunities', '/opportunities', 'Opportunities'),
+      ('overview', '/', t('overview')),
+      ('visibility', '/visibility', t('visibility')),
+      ('share-of-voice', '/share-of-voice', t('share_of_voice')),
+      ('citations', '/citations', t('citations')),
+      ('opportunities', '/opportunities', t('opportunities')),
     ] %}
     {% for key, href, label in nav %}
     <a href="{{ href }}"
        class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == key else 'text-slate-600 hover:bg-slate-100' }}">{{ label }}</a>
     {% endfor %}
-    <p class="px-2 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Settings</p>
+    <p class="px-2 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ t('settings') }}</p>
     <a href="/settings/brand"
-       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'settings-brand' else 'text-slate-600 hover:bg-slate-100' }}">Brand & competitors</a>
+       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'settings-brand' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('brand_competitors') }}</a>
     <a href="/settings/prompts"
-       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'settings-prompts' else 'text-slate-600 hover:bg-slate-100' }}">Prompts</a>
-    <p class="px-2 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Operator</p>
+       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'settings-prompts' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('prompts') }}</a>
+    <p class="px-2 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ t('operator') }}</p>
     <a href="/tenants"
-       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'tenants' else 'text-slate-600 hover:bg-slate-100' }}">Clients</a>
+       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'tenants' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('clients') }}</a>
     <a href="/settings/keys"
-       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'settings-keys' else 'text-slate-600 hover:bg-slate-100' }}">Engine keys</a>
+       class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'settings-keys' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('engine_keys') }}</a>
     <a href="/setup"
-       class="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-center text-sm font-semibold text-indigo-700 hover:bg-indigo-100">+ Set up {{ tenant.current.name }}</a>
+       class="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-center text-sm font-semibold text-indigo-700 hover:bg-indigo-100">{{ t('setup_brand', name=tenant.current.name) }}</a>
+
+    {# Language switcher #}
+    <form method="get" action="{{ request.url.path }}" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-2">
+      <p class="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ t('language') }}</p>
+      <select name="lang" onchange="document.cookie='prism_lang='+this.value+';path=/;max-age=31536000';this.form.submit()"
+              class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm font-medium focus:border-indigo-400 focus:outline-none">
+        {% for code, name in languages.items() %}
+        <option value="{{ code }}" {{ 'selected' if code == lang }}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+
     <div class="mt-auto px-2 pt-6 text-xs text-slate-400">
-      rewrite of the GEO concept<br>inspired by elmohq/elmo
+      {{ t('footer_credit') | safe }}
     </div>
   </aside>
 

@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import jobs, keystore, queries, workspace
+from . import i18n, jobs, keystore, queries, workspace
 from .db import connect, init_db, q, q1
 from .onboarding import analyze_website, generate_prompts
 
@@ -51,12 +51,26 @@ def _tenant(request: Request) -> dict:
     return {"id": tenant_id, "current": current, "all": tenants}
 
 
+def _resolve_lang(request: Request) -> str:
+    """Resolve language: ?lang= query param > prism_lang cookie > default zh-TW."""
+    qp = request.query_params.get("lang")
+    if qp and qp in i18n.LANGUAGES:
+        return qp
+    cookie = request.cookies.get("prism_lang")
+    if cookie and cookie in i18n.LANGUAGES:
+        return cookie
+    return "zh-TW"
+
+
 def ctx(request: Request, **kwargs) -> dict:
     tenant = _tenant(request)
+    lang = _resolve_lang(request)
     with connect() as conn:
-        models = [dict(m) for m in queries.models(conn)]
-    return {"request": request, "models": models, "tenant": tenant,
-            "PRISM_KEY": keystore.has_any_key(), **kwargs}
+        models_list = [dict(m) for m in queries.models(conn)]
+    return {"request": request, "models": models_list, "tenant": tenant,
+            "PRISM_KEY": keystore.has_any_key(), "lang": lang,
+            "languages": i18n.LANGUAGES,
+            "t": lambda key, **fmt: i18n.t(lang, key, **fmt), **kwargs}
 
 
 def _scoped(response: RedirectResponse, request: Request) -> RedirectResponse:

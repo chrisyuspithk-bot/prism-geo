@@ -1,39 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Set up your brand · prism{% endblock %}
+{% block title %}{{ t('title_setup') }}{% endblock %}
 {% block content %}
 <div class="mb-8 max-w-2xl">
-  <h1 class="text-2xl font-semibold tracking-tight">Set up your brand</h1>
-  <p class="mt-1 text-sm text-slate-500">Tell prism what to track. It will fetch your site, learn your market, and draft a starter prompt set you can edit.</p>
+  <h1 class="text-2xl font-semibold tracking-tight">{{ t('setup_title') }}</h1>
+  <p class="mt-1 text-sm text-slate-500">{{ t('setup_desc') }}</p>
 </div>
 
 <form method="post" action="/setup" class="max-w-2xl space-y-5 rounded-xl border border-slate-200 bg-white p-6">
   <div>
-    <label class="mb-1 block text-sm font-medium">Brand name</label>
-    <input name="name" required value="{{ own.name if own else '' }}" placeholder="e.g. Allbirds"
+    <label class="mb-1 block text-sm font-medium">{{ t('setup_brand_label') }}</label>
+    <input name="name" required value="{{ own.name if own else '' }}" placeholder="{{ t('new_client_placeholder') }}"
            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
   </div>
   <div>
-    <label class="mb-1 block text-sm font-medium">Website <span class="font-normal text-slate-400">(used to learn your market + spot your own citations)</span></label>
+    <label class="mb-1 block text-sm font-medium">{{ t('setup_website_label') }} <span class="font-normal text-slate-400">({{ t('setup_website_hint') }})</span></label>
     <input name="website" value="{{ own.website if own else '' }}" placeholder="https://www.allbirds.com"
            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
   </div>
   <div>
-    <label class="mb-1 block text-sm font-medium">Competitors <span class="font-normal text-slate-400">(comma separated — you'll show up side-by-side in Share of Voice)</span></label>
+    <label class="mb-1 block text-sm font-medium">{{ t('setup_competitors_label') }} <span class="font-normal text-slate-400">({{ t('setup_competitors_hint') }})</span></label>
     <textarea name="competitors" rows="3" placeholder="Nike, Adidas, Allbirds"
            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">{{ competitors | join(', ') }}</textarea>
   </div>
   <label class="flex items-start gap-3 rounded-lg bg-slate-50 p-4">
     <input type="checkbox" name="generate" value="1" checked class="mt-0.5">
     <span class="text-sm">
-      <span class="font-medium">Generate a starter prompt set with AI</span><br>
-      <span class="text-slate-500">Analyzes your website and drafts ~10 buyer-style questions (comparisons, alternatives, budget, trust) worth tracking. You can edit them after.</span>
+      <span class="font-medium">{{ t('generate_starter') }}</span><br>
+      <span class="text-slate-500">{{ t('generate_starter_desc') }}</span>
     </span>
   </label>
   <div class="flex items-center gap-3 pt-1">
     <button class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">
-      {{ 'Update workspace' if own else 'Create workspace' }}
+      {{ t('update_workspace') if own else t('create_workspace') }}
     </button>
-    {% if not PRISM_KEY %}<span class="text-xs text-amber-600">No LLM API key set — prompt generation will use generic templates and live runs are disabled.</span>{% endif %}
+    {% if not PRISM_KEY %}<span class="text-xs text-amber-600">{{ t('no_llm_key') }}</span>{% endif %}
   </div>
 </form>
 {% endblock %}
