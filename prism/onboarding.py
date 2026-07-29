@@ -1,17 +1,20 @@
 """Brand onboarding: turn a website + competitor list into a tracked workspace.
 
-Two jobs, mirroring how real GEO tools set up a brand:
+Three jobs:
 1. analyze_website — fetch the brand homepage and extract a lightweight
-   description (title, meta description, headings) used to ground prompt gen.
-2. generate_prompts — ask the configured LLM for buyer-style questions a
-   customer would ask an answer engine in this market, tagged by intent.
+   description (title, meta description, headings).
+2. search_context — query DuckDuckGo's free Instant Answer API for market
+   context (related topics, snippets) around the brand + competitors.
+3. generate_prompts — use website + search context + LLM (or fallback
+   templates) to produce buyer-style tracking questions.
 
-Both degrade gracefully: if the site or the LLM is unreachable we fall back to
-generic market prompt templates so setup never dead-ends.
+All degrade gracefully: no API key? no problem — templates still work.
+No network? search_context and website fetch silently fall back.
 """
 
 import json
 import re
+from urllib.parse import quote
 
 import httpx
 
@@ -74,16 +77,69 @@ GENERIC_PROMPTS_ZH = [
 ]
 
 
+async def search_context(brand: str, competitors: list[str]) -> str:
+    """Free DuckDuckGo Instant Answer API — no key needed.
+
+    Searches the brand and up to 2 competitors, collects RelatedTopics
+    to ground prompt generation in real market search behaviour.
+    """
+    queries = [brand]
+    if competitors:
+        queries.append(competitors[0])
+        if len(competitors) > 1:
+            queries.append(competitors[1])
+    queries = [q.strip() for q in queries if q.strip()]
+    if not queries:
+        return ""
+
+    lines: list[str] = []
+    async with httpx.AsyncClient(timeout=10) as client:
+        for q in queries:
+            try:
+                url = f"https://api.duckduckgo.com/?q={quote(q)}&format=json&no_html=1&skip_disambig=1"
+                resp = await client.get(url)
+                resp.raise_for_status()
+                data = resp.json()
+            except Exception:
+                continue
+
+            if data.get("AbstractText"):
+                lines.append(data["AbstractText"])
+            for topic in data.get("RelatedTopics", []):
+                text = topic.get("Text", "")
+                if text:
+                    lines.append(text)
+
+    if not lines:
+        return ""
+
+    # Deduplicate and trim
+    seen: set[str] = set()
+    unique: list[str] = []
+    for line in lines:
+        key = re.sub(r"\s+", " ", line).strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            unique.append(line.strip())
+    return "\n".join(unique[:20])
+
+
 async def generate_prompts(brand: str, competitors: list[str],
                            site: dict, n: int = 10,
                            lang: str = "en") -> list[dict]:
     """Generate buyer-style tracking prompts. Falls back to generic templates."""
     comp_list = ", ".join(competitors) if competitors else "its main competitors"
+
+    # Build context from website + free DuckDuckGo search
     context = ""
     if site.get("description"):
         context = f"\nAbout the brand: {site['description']}"
     elif site.get("title"):
         context = f"\nBrand site title: {site['title']}"
+
+    search = await search_context(brand, competitors)
+    if search:
+        context += f"\n\nReal search results / related topics for this market:\n{search}"
 
     _, api_key, api_base, model = keystore.active_config()
     if api_key:
@@ -91,9 +147,9 @@ async def generate_prompts(brand: str, competitors: list[str],
             ask = (
                 f"你正在協助設定品牌「{brand}」的 AI 可見度追蹤。"
                 f"競爭者：{comp_list}。{context}\n\n"
-                f"請列出 {n} 個潛在客戶在 AI 答案引擎上研究這個市場時可能會問的"
-                f"簡短問題——請涵蓋推薦、替代方案、預算、購買指南、優缺點分析"
-                f"和信任度等不同類型。"
+                f"請根據以上真實市場資訊，列出 {n} 個潛在客戶在 AI 答案引擎上"
+                f"研究這個市場時最可能問的簡短問題——請涵蓋推薦、替代方案、"
+                f"預算、購買指南、優缺點分析和信任度等不同類型。"
                 f"只回傳 JSON 陣列，每個物件包含 text 和 tag 欄位"
                 f"（tag 使用簡短英文單字，例如 recommendation, alternatives, "
                 f"budget, guide, review, trust）。"
