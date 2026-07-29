@@ -681,7 +681,7 @@ def _run_crawl(site_id: int, domain: str):
             # Compute embeddings (slow, do it outside the DB write lock)
             with connect() as conn:
                 rows = conn.execute(
-                    "SELECT id, content FROM chunks WHERE site_id = ? AND embedding IS NULL",
+                    "SELECT id, content FROM chunks WHERE site_id = ? AND embedding = ''",
                     (site_id,),
                 ).fetchall()
             for r in rows:
