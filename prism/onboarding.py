@@ -59,21 +59,21 @@ async def analyze_website(url: str) -> dict:
 
 
 GENERIC_PROMPTS = [
-    ("What are the best {market} brands in {year}?", "comparison"),
     ("Best {market} for beginners", "recommendation"),
-    ("{brand} vs {competitor} — which is better?", "vs"),
-    ("Alternatives to {brand} for {market}", "alternatives"),
-    ("Best {market} under $100", "budget"),
-    ("Which {market} brands are most reliable?", "trust"),
+    ("What are the best {market} brands in {year}?", "comparison"),
+    ("Best budget {market}", "budget"),
+    ("Which {market} brands are most trustworthy?", "trust"),
+    ("{market} buying guide — what to look for", "guide"),
+    ("{market} pros and cons — what users say", "review"),
 ]
 
 GENERIC_PROMPTS_ZH = [
     ("新手適合的 {market} 推薦", "recommendation"),
-    ("{brand} 的替代選擇有哪些？", "alternatives"),
+    ("{market} 有邊啲選擇？", "alternatives"),
     ("平價 {market} 推薦", "budget"),
-    ("哪些 {market} 品牌最值得信賴？", "trust"),
-    ("{market} 選購指南與注意事項", "guide"),
-    ("{brand} 的優缺點分析", "review"),
+    ("邊個 {market} 品牌最信得過？", "trust"),
+    ("{market} 選購指南同注意事項", "guide"),
+    ("{market} 嘅優缺點分析", "review"),
 ]
 
 
@@ -148,8 +148,12 @@ async def generate_prompts(brand: str, competitors: list[str],
                 f"你正在協助設定品牌「{brand}」的 AI 可見度追蹤。"
                 f"競爭者：{comp_list}。{context}\n\n"
                 f"請根據以上真實市場資訊，列出 {n} 個潛在客戶在 AI 答案引擎上"
-                f"研究這個市場時最可能問的簡短問題——請涵蓋推薦、替代方案、"
-                f"預算、購買指南、優缺點分析和信任度等不同類型。"
+                f"研究呢個市場時最可能問嘅簡短問題——請涵蓋推薦、替代方案、"
+                f"預算、購買指南、優缺點分析和信任度等不同類型。\n\n"
+                f"重要：問題中唔好包含品牌名「{brand}」或任何競爭者名稱——"
+                f"呢啲應該係類別層級嘅問題，由潛在客戶研究市場時自然提出，"
+                f"而唔係針對特定品牌嘅搜尋。我哋想睇嘅係品牌喺一般市場問題中"
+                f"嘅出現頻率。\n\n"
                 f"只回傳 JSON 陣列，每個物件包含 text 和 tag 欄位"
                 f"（tag 使用簡短英文單字，例如 recommendation, alternatives, "
                 f"budget, guide, review, trust）。"
@@ -160,11 +164,16 @@ async def generate_prompts(brand: str, competitors: list[str],
                 f"You help set up AI-visibility tracking for the brand '{brand}'. "
                 f"Its competitors: {comp_list}.{context}\n\n"
                 f"List {n} short questions a potential customer would ask an AI answer "
-                f"engine when researching this market — a mix of comparisons, "
-                f"'best X for Y', alternatives, budget and trust questions. "
+                f"engine when researching this market — a mix of recommendations, "
+                f"alternatives, budget, guides, reviews and trust questions.\n\n"
+                f"IMPORTANT: Do NOT include the brand name '{brand}' or any competitor "
+                f"names in the questions. These should be category-level questions "
+                f"a shopper naturally asks when researching a market — not "
+                f"brand-specific searches. We're tracking whether the brand appears "
+                f"in answers to general market questions.\n\n"
                 f"Return ONLY a JSON array of objects with keys text and tag "
-                f"(tag is one short lowercase word like comparison, budget, vs, "
-                f"alternatives, trust, recommendation). No markdown."
+                f"(tag is one short lowercase word like recommendation, alternatives, "
+                f"budget, guide, review, trust). No markdown."
             )
         try:
             async with httpx.AsyncClient(timeout=60) as client:
@@ -198,12 +207,9 @@ async def generate_prompts(brand: str, competitors: list[str],
     # Fallback: fill generic templates with a guessed market noun.
     market = site.get("title") or brand
     market = re.sub(r"[|—–-].*$", "", market).strip() or "products"
-    first_comp = competitors[0] if competitors else "competitors"
     from datetime import date
     templates = GENERIC_PROMPTS_ZH if lang == "zh-TW" else GENERIC_PROMPTS
     return [
-        {"text": t.format(market=market, brand=brand, competitor=first_comp,
-                          year=date.today().year),
-         "tag": tag}
+        {"text": t.format(market=market, year=date.today().year), "tag": tag}
         for t, tag in templates
     ]
