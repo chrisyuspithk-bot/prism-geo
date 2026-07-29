@@ -380,7 +380,7 @@ def add_prompt(request: Request, text: str = Form(...), tags: str = Form("")):
 def delete_prompt(request: Request, prompt_id: int):
     tenant = _tenant(request)
     with connect() as conn:
-        conn.execute("DELETE FROM prompts WHERE id = ? AND tenant_id = ?",
+        conn.execute("UPDATE prompts SET active = 0 WHERE id = ? AND tenant_id = ?",
                      (prompt_id, tenant["id"]))
     return RedirectResponse("/settings/prompts", status_code=303)
 
