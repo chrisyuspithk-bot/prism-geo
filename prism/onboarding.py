@@ -65,12 +65,12 @@ GENERIC_PROMPTS = [
 ]
 
 GENERIC_PROMPTS_ZH = [
-    ("{year} 年最好的 {market} 品牌有哪些？", "comparison"),
     ("新手適合的 {market} 推薦", "recommendation"),
-    ("{brand} 跟 {competitor} 哪個比較好？", "vs"),
     ("{brand} 的替代選擇有哪些？", "alternatives"),
     ("平價 {market} 推薦", "budget"),
     ("哪些 {market} 品牌最值得信賴？", "trust"),
+    ("{market} 選購指南與注意事項", "guide"),
+    ("{brand} 的優缺點分析", "review"),
 ]
 
 
@@ -92,10 +92,11 @@ async def generate_prompts(brand: str, competitors: list[str],
                 f"你正在協助設定品牌「{brand}」的 AI 可見度追蹤。"
                 f"競爭者：{comp_list}。{context}\n\n"
                 f"請列出 {n} 個潛在客戶在 AI 答案引擎上研究這個市場時可能會問的"
-                f"簡短問題——請涵蓋比較、推薦、替代方案、預算和信任度等不同類型。"
+                f"簡短問題——請涵蓋推薦、替代方案、預算、購買指南、優缺點分析"
+                f"和信任度等不同類型。"
                 f"只回傳 JSON 陣列，每個物件包含 text 和 tag 欄位"
-                f"（tag 使用簡短英文單字，例如 comparison, budget, vs, "
-                f"alternatives, trust, recommendation）。"
+                f"（tag 使用簡短英文單字，例如 recommendation, alternatives, "
+                f"budget, guide, review, trust）。"
                 f"所有問題必須使用繁體中文撰寫。不要使用 markdown。"
             )
         else:
