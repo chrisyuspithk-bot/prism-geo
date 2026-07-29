@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import i18n, jobs, keystore, queries, workspace
+from . import i18n, jobs, keystore, queries, scheduler, workspace
 from .db import connect, init_db, q, q1
 from .onboarding import analyze_website, generate_prompts
 
@@ -29,6 +29,7 @@ async def startup() -> None:
     init_db()
     jobs.recover_stale_jobs()
     jobs.ensure_worker()
+    scheduler.ensure_scheduler()
 
 
 # --- Tenant resolution ---------------------------------------------------------
@@ -338,9 +339,16 @@ def cancel_job(job_id: int, back: str = "/"):
 
 @app.get("/settings/keys", response_class=HTMLResponse)
 def settings_keys(request: Request):
+    with connect() as conn:
+        enabled = conn.execute(
+            "SELECT value FROM settings WHERE key = 'schedule_enabled'").fetchone()
+        hour = conn.execute(
+            "SELECT value FROM settings WHERE key = 'schedule_hour'").fetchone()
     return templates.TemplateResponse(
         request, "settings_keys.html",
-        context=ctx(request, page="settings-keys", providers=keystore.provider_status()))
+        context=ctx(request, page="settings-keys", providers=keystore.provider_status(),
+                    schedule_enabled=(enabled["value"] == "1") if enabled else True,
+                    schedule_hour=int(hour["value"]) if hour else 2))
 
 
 @app.post("/settings/keys")
@@ -364,6 +372,13 @@ def clear_key(provider: str):
         for suffix in ("api_key", "base_url", "model", "enabled"):
             keystore.set_value(f"{provider}_{suffix}", "")
     return RedirectResponse("/settings/keys", status_code=303)
+
+
+@app.post("/settings/schedule")
+def save_schedule(enabled: str = Form("0"), hour: str = Form("2")):
+    keystore.set_value("schedule_enabled", "1" if enabled == "1" else "0")
+    keystore.set_value("schedule_hour", hour)
+    return RedirectResponse("/settings/keys?saved=1", status_code=303)
 
 
 # --- Prompt management ----------------------------------------------------------

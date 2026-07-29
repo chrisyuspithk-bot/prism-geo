@@ -168,6 +168,8 @@ STRINGS = {
     "enabled": {"zh-TW": "已啟用", "en": "Enabled"},
     "disabled": {"zh-TW": "已停用", "en": "Disabled"},
     "save_keys": {"zh-TW": "儲存金鑰", "en": "Save keys"},
+    "schedule_title": {"zh-TW": "每日自動執行", "en": "Daily Auto-Run"},
+    "schedule_desc": {"zh-TW": "每天在指定時間自動執行所有提問的評估", "en": "Automatically runs all prompts against enabled engines once per day"},
     "clear": {"zh-TW": "清除", "en": "Clear"},
     "saved_badge": {"zh-TW": "✓ 已儲存", "en": "✓ Saved"},
     "no_keys_warning": {"zh-TW": "尚未設定引擎金鑰 — 無法執行即時評估。新增金鑰以啟用「立即執行」功能。", "en": "No engine keys configured — live evaluations are disabled. Add a key to enable the Run now buttons."},
