@@ -6,7 +6,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 
-_MAX_PAGES = 12
+_MAX_PAGES = 20
 _HEADERS = {"User-Agent": "prism-geo/1.0 (content-crawler)"}
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
@@ -98,7 +98,7 @@ def fetch_page(url: str, timeout: int = 15) -> dict | None:
         body = re.sub(f"<{tag}[^>]*>.*?</{tag}>", "", body, flags=re.I | re.S)
 
     text = _clean(body)
-    if len(text) < 100:
+    if len(text) < 20:
         return None
 
     parsed = urlparse(url)
