@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import i18n, jobs, keystore, queries, scheduler, workspace
+from . import i18n, jobs, keystore, queries, report, scheduler, workspace
 from .db import connect, init_db, q, q1
 from .onboarding import analyze_website, generate_prompts
 
@@ -246,6 +246,22 @@ def visibility(request: Request):
         data = queries.visibility_page(conn, tenant["id"], days, model_id)
     return templates.TemplateResponse(
         request, "visibility.html", context=ctx(request, page="visibility", data=data, days=days))
+
+
+@app.get("/report/download")
+def download_report(request: Request, period: str = "monthly"):
+    tenant = _tenant(request)
+    days, model_id = _filters(request)
+    tname = tenant["current"].get("name", "")
+    tid = tenant["id"]
+    with connect() as conn:
+        own = workspace.own_brand(conn, tid)
+        brand_name = own["name"] if own else tname or "Brand"
+    pdf = report.generate(tid, tname, brand_name, period, model_id)
+    filename = f"prism-geo-{period}-{brand_name.lower().replace(' ', '-')}.pdf"
+    from fastapi.responses import Response
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 @app.get("/share-of-voice", response_class=HTMLResponse)

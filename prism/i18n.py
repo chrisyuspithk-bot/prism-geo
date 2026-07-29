@@ -215,6 +215,11 @@ STRINGS = {
 
     # --- language switcher ---
     "language": {"zh-TW": "語言", "en": "Language"},
+
+    # --- reports ---
+    "download_report": {"zh-TW": "下載報表", "en": "Download report"},
+    "weekly": {"zh-TW": "每週", "en": "Weekly"},
+    "monthly": {"zh-TW": "每月", "en": "Monthly"},
 }
 
 
