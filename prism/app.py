@@ -901,19 +901,21 @@ def _run_crawl(site_id: int, domain: str):
                             (page_id, site_id, i, ch),
                         )
 
-            # Compute embeddings (slow, do it outside the DB write lock)
+            # Compute embeddings in batches (faster than per-chunk)
             with connect() as conn:
                 rows = conn.execute(
                     "SELECT id, content FROM chunks WHERE site_id = ? AND embedding = ''",
                     (site_id,),
                 ).fetchall()
-            for r in rows:
-                vec = embeddings.embed_one(r["content"])
-                with connect() as conn:
-                    conn.execute(
-                        "UPDATE chunks SET embedding = ? WHERE id = ?",
-                        (embeddings.pack(vec), r["id"]),
-                    )
+            if rows:
+                contents = [r["content"] for r in rows]
+                vecs = embeddings.embed(contents)
+                for r, vec in zip(rows, vecs):
+                    with connect() as conn:
+                        conn.execute(
+                            "UPDATE chunks SET embedding = ? WHERE id = ?",
+                            (embeddings.pack(vec), r["id"]),
+                        )
 
             with connect() as conn:
                 if not pages_data:

@@ -68,12 +68,10 @@ def _from_sitemap(base: str, timeout: int) -> list[str]:
         "/sitemap.xml", "/sitemap_index.xml",
         "/post-sitemap.xml", "/page-sitemap.xml",
         "/wp-sitemap.xml",  # WordPress
-        "/sitemap-index.xml", "/pages-sitemap.xml",
-        "/blog-sitemap.xml", "/blog-posts-sitemap.xml",
+        "/sitemap-index.xml",
     ]
-    short_timeout = max(timeout // 3, 5)
-    for i, path in enumerate(paths):
-        t = timeout if i == 0 else short_timeout
+    t = max(timeout // 2, 5)
+    for path in paths:
         urls = _parse_sitemap(base + path, t)
         if urls:
             return urls

@@ -29,9 +29,16 @@ def _get_jina_key() -> str | None:
     return _JINA_KEY or None
 
 
+_JINA_FAILED = False
+
+
 def _jina_embed(texts: list[str]) -> list[list[float]] | None:
+    global _JINA_FAILED
+    if _JINA_FAILED:
+        return None
     key = _get_jina_key()
     if not key:
+        _JINA_FAILED = True
         return None
     try:
         resp = httpx.post(
@@ -44,6 +51,7 @@ def _jina_embed(texts: list[str]) -> list[list[float]] | None:
         data = resp.json()
         return [d["embedding"] for d in data.get("data", [])]
     except Exception:
+        _JINA_FAILED = True
         return None
 
 
