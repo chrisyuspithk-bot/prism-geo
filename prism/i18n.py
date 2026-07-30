@@ -355,6 +355,23 @@ STRINGS = {
     "geo_audit_report_ready": {"zh-TW": "結合 Content Studio 網站內容與 AI 可見度數據，生成含內容審計、評分及路線圖的專業 PDF。", "en": "Combines Content Studio website content with AI visibility data into a professional PDF with content audit, scoring, and roadmap."},
     "geo_audit_report_no_sites": {"zh-TW": "需先爬取網站內容才能生成完整審計報告。", "en": "A crawled website is needed to generate the full audit report."},
     "report_quick_desc": {"zh-TW": "純數據 Markdown 報告（可見度、聲量、引用、引擎分佈）。", "en": "Data-only Markdown report (visibility, share of voice, citations, engines)."},
+
+    # --- engine keys page ---
+    "add_engine": {"zh-TW": "＋ 新增引擎", "en": "＋ Add Engine"},
+    "add_engine_btn": {"zh-TW": "新增", "en": "Add"},
+    "engine_label": {"zh-TW": "引擎", "en": "Engine"},
+    "api_key_label": {"zh-TW": "API 金鑰", "en": "API Key"},
+    "model_label": {"zh-TW": "模型", "en": "Model"},
+    "custom_engine_option": {"zh-TW": "自訂 — 任意 OpenAI 相容端點", "en": "Custom — any OpenAI-compatible endpoint"},
+    "base_url_label": {"zh-TW": "Base URL", "en": "Base URL"},
+    "base_url_custom_only": {"zh-TW": "（僅自訂引擎需要）", "en": "(Custom only)"},
+    "paused": {"zh-TW": "已暫停", "en": "Paused"},
+    "clear_engine": {"zh-TW": "清除引擎", "en": "Clear engine"},
+    "engine_chatgpt_desc": {"zh-TW": "OpenAI — ChatGPT 回答背後的引擎", "en": "OpenAI — the engine behind ChatGPT answers"},
+    "engine_claude_desc": {"zh-TW": "Claude — 透過 OpenRouter 或 Anthropic 相容端點", "en": "Claude — via OpenRouter, or point base URL at an Anthropic-compatible endpoint"},
+    "engine_gemini_desc": {"zh-TW": "Gemini — Google 原生 API", "en": "Gemini — Google's native API"},
+    "engine_perplexity_desc": {"zh-TW": "Perplexity — Sonar API", "en": "Perplexity — Sonar API"},
+    "engine_deepseek_desc": {"zh-TW": "DeepSeek — 經濟實惠的 OpenAI 相容聊天模型", "en": "DeepSeek — affordable OpenAI-compatible chat model"},
 }
 
 

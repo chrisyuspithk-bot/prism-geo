@@ -29,15 +29,15 @@
   <div class="rounded-xl border {{ 'border-indigo-200 ring-1 ring-indigo-100' if p.enabled else 'border-slate-200' }} bg-white p-5">
     <div class="mb-3 flex items-center justify-between">
       <div>
-        <h2 class="font-semibold capitalize">{{ p.help if p.help else p.name }}</h2>
-        {% if p.base_url %}<p class="text-xs text-slate-400">{{ p.model }} @ {{ p.base_url }}</p>{% endif %}
+        <h2 class="font-semibold capitalize">{{ p.name if p.custom_id else p.name|title }}</h2>
+        <p class="text-xs text-slate-400">{{ t('engine_' + p.name + '_desc') if p.name in ['chatgpt','claude','gemini','perplexity','deepseek'] else (p.help if p.custom_id else '') }}</p>
       </div>
       {% if p.enabled %}
       <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
         Tracking · {{ p.source }}
       </span>
       {% else %}
-      <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">已暫停</span>
+      <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">{{ t('paused') }}</span>
       {% endif %}
     </div>
     <form method="post" action="/settings/keys" class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
@@ -58,7 +58,7 @@
     </form>
     {% if p.source == 'ui' %}
     <form method="post" action="/settings/keys/{{ p.name }}/clear" class="mt-2">
-      <button class="text-xs text-rose-500 hover:underline">{{ t('clear') }}引擎</button>
+      <button class="text-xs text-rose-500 hover:underline">{{ t('clear_engine') }}</button>
     </form>
     {% endif %}
   </div>
@@ -69,30 +69,30 @@
     <form method="post" action="/settings/keys" class="space-y-3">
       <div class="flex items-end gap-3">
         <div class="flex-1">
-          <label class="block text-xs font-medium text-slate-500 mb-1">引擎</label>
+          <label class="block text-xs font-medium text-slate-500 mb-1">{{ t('engine_label') }}</label>
           <select name="provider" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
-            <option value="">＋ Add Engine</option>
+            <option value="">{{ t('add_engine') }}</option>
             {% for p in available if not p.custom_id %}
-            <option value="{{ p.name }}">{{ p.name | title }} — {{ p.help }}</option>
+            <option value="{{ p.name }}">{{ p.name | title }}</option>
             {% endfor %}
-            <option value="__custom__">Custom — any OpenAI-compatible endpoint</option>
+            <option value="__custom__">{{ t('custom_engine_option') }}</option>
           </select>
         </div>
         <div class="flex-[2]">
-          <label class="block text-xs font-medium text-slate-500 mb-1">API Key</label>
+          <label class="block text-xs font-medium text-slate-500 mb-1">{{ t('api_key_label') }}</label>
           <input name="api_key" type="password" autocomplete="off" placeholder="sk-..."
                  class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
         </div>
-        <button class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 shrink-0">新增</button>
+        <button class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 shrink-0">{{ t('add_engine_btn') }}</button>
       </div>
       <div class="flex items-end gap-3">
         <div class="w-40">
-          <label class="block text-xs font-medium text-slate-500 mb-1">Model</label>
+          <label class="block text-xs font-medium text-slate-500 mb-1">{{ t('model_label') }}</label>
           <input name="model" placeholder="gpt-4o"
                  class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
         </div>
         <div class="flex-1">
-          <label class="block text-xs font-medium text-slate-500 mb-1">Base URL <span class="text-slate-400 font-normal">(Custom only)</span></label>
+          <label class="block text-xs font-medium text-slate-500 mb-1">{{ t('base_url_label') }} <span class="text-slate-400 font-normal">{{ t('base_url_custom_only') }}</span></label>
           <input name="base_url" placeholder="https://api.openai.com/v1"
                  class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
         </div>
