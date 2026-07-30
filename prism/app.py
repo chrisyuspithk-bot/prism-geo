@@ -597,15 +597,21 @@ def add_site(request: Request, domain: str = Form(...)):
 
 
 @app.get("/sites/{site_id}", response_class=HTMLResponse)
-def site_detail(request: Request, site_id: int):
+def site_detail(request: Request, site_id: int, page: int = 1):
     tenant = _tenant(request)
     sites, pages_by_site = _site_queries(tenant["id"])
     site = next((s for s in sites if s["id"] == site_id), None)
     if not site:
         return RedirectResponse("/sites", 303)
+    all_pages = pages_by_site.get(site_id, [])
+    per_page = 20
+    total_pages = max(1, (len(all_pages) + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    paged = all_pages[(page - 1) * per_page : page * per_page]
     return templates.TemplateResponse(
         request, "site.html",
-        context=ctx(request, page="sites", site=site, pages=pages_by_site.get(site_id, [])))
+        context=ctx(request, page="sites", site=site, pages=paged,
+                    page_num=page, total_pages=total_pages, total_pages_count=len(all_pages)))
 
 
 @app.post("/sites/{site_id}/crawl")
