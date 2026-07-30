@@ -70,7 +70,7 @@
 <h2 class="mb-3 mt-8 font-semibold">{{ t('response_log') }}</h2>
 {% if data.runs %}
 {% for batch_id, batch_runs in data.runs | groupby('job_id') %}
-{% set batch_time = batch_runs[0].ran_at[:16] %}
+{% set batch_time = batch_runs[0].ran_at[:19] | tz %}
 <div class="mb-5">
   <div class="mb-2 flex items-center gap-2 text-xs font-medium text-slate-400 uppercase tracking-wide">
     <span class="inline-block h-2 w-2 rounded-full bg-indigo-400"></span>
@@ -81,7 +81,7 @@
     {% for r in batch_runs %}
     <details id="run-{{ r.id }}" class="rounded-xl border border-slate-200 bg-white">
       <summary class="cursor-pointer px-5 py-3 text-sm text-slate-500 hover:text-slate-700">
-        <span class="font-medium text-slate-700">{{ r.model_name }}</span> · {{ r.ran_at }} ·
+        <span class="font-medium text-slate-700">{{ r.model_name }}</span> · {{ r.ran_at[:19] | tz }} ·
         {% if r.status == 'ok' %}<span class="text-emerald-600">ok</span>{% else %}<span class="text-rose-500">error</span>{% endif %}
       </summary>
       {% if r.error %}<pre class="whitespace-pre-wrap border-t border-rose-100 bg-rose-50 px-5 py-3 text-sm leading-relaxed text-rose-700">{{ r.error }}</pre>{% endif %}

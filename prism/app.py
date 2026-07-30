@@ -27,6 +27,22 @@ BASE = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 
 
+def _tz_display(utc_str: str) -> str:
+    """Convert a UTC datetime string to GMT+8 display format."""
+    if not utc_str:
+        return ""
+    from datetime import datetime, timezone, timedelta
+    try:
+        dt = datetime.strptime(utc_str[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return utc_str
+    local = dt.astimezone(timezone(timedelta(hours=8)))
+    return local.strftime("%Y-%m-%d %H:%M")
+
+
+templates.env.filters["tz"] = _tz_display
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()

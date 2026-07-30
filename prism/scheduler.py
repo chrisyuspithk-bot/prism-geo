@@ -22,7 +22,7 @@ def _get_config() -> tuple[bool, int]:
         hour = conn.execute(
             "SELECT value FROM settings WHERE key = 'schedule_hour'").fetchone()
     on = (enabled["value"] or "1") == "1" if enabled else True
-    h = int(hour["value"]) if hour else 2
+    h = int(hour["value"]) if hour else 16  # 16 UTC = 00:00 GMT+8
     return on, h
 
 
@@ -31,7 +31,7 @@ def _set_defaults() -> None:
         conn.execute(
             "INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_enabled', '1')")
         conn.execute(
-            "INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_hour', '2')")
+            "INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_hour', '16')")
 
 
 async def _scheduler() -> None:
