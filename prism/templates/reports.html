@@ -52,14 +52,15 @@
       <h2 class="text-sm font-semibold text-slate-600">{{ t('visibility_report') }}</h2>
       <p class="mt-0.5 text-xs text-slate-400">{{ t('report_quick_desc') }}</p>
     </div>
-    <form method="get" action="/reports/download" class="flex items-end gap-3">
-      <select name="days" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
+    <div class="flex items-end gap-2">
+      <select id="visDays" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
         <option value="7">{{ t('last_7_days') }}</option>
         <option value="30" selected>{{ t('last_30_days') }}</option>
         <option value="90">{{ t('last_90_days') }}</option>
       </select>
-      <button type="submit" class="rounded-lg border border-slate-200 bg-white px-5 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50">{{ t('download_md') }}</button>
-    </form>
+      <a id="btnVisMD" href="/reports/download?days=30" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-50">{{ t('download_md') }}</a>
+      <button id="btnVisPDF" onclick="downloadVisPDF()" class="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">{{ t('download_pdf') }}</button>
+    </div>
   </div>
 </div>
 
@@ -82,6 +83,33 @@
 
 <script>
 var _auditPolling = null;
+
+document.getElementById('visDays').addEventListener('change', function() {
+  document.getElementById('btnVisMD').href = '/reports/download?days=' + this.value;
+});
+
+function downloadVisPDF() {
+  var overlay = document.getElementById('auditOverlay');
+  overlay.style.display = 'flex';
+  document.getElementById('overlayStatus').textContent = '📊 正在生成可見度報告';
+  document.getElementById('overlayLabel').textContent = '生成 PDF 中…';
+  document.getElementById('overlayBar').style.width = '40%';
+  document.getElementById('overlayErr').style.display = 'none';
+
+  var days = document.getElementById('visDays').value;
+  var a = document.createElement('a');
+  a.href = '/reports/download?format=pdf&days=' + days;
+  a.download = 'geo-visibility-report-' + days + 'd.pdf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  document.getElementById('overlayBar').style.width = '100%';
+  document.getElementById('overlayStatus').textContent = '✅ 報告已生成';
+  setTimeout(function() {
+    overlay.style.display = 'none';
+  }, 1500);
+}
 
 function startAudit() {
   var overlay = document.getElementById('auditOverlay');

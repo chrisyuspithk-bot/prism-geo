@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="{{ lang | default('zh-TW') }}">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 22mm 18mm; @top-center { content: element(header); } }
+  #header { position: running(header); text-align: right; font-size: 9px; color: #94a3b8; }
+  body { font-family: 'DejaVu Sans', 'WenQuanYi Micro Hei', sans-serif; font-size: 11px; color: #1e293b; line-height: 1.5; }
+  .cover { text-align: center; padding: 80px 0 40px; }
+  .cover h1 { font-size: 28px; margin: 0 0 4px; color: #4f46e5; }
+  .cover .sub { font-size: 14px; color: #64748b; margin-bottom: 8px; }
+  .cover .meta { font-size: 10px; color: #94a3b8; }
+  h2 { font-size: 16px; color: #1e293b; border-bottom: 2px solid #4f46e5; padding-bottom: 4px; margin: 32px 0 12px; }
+  h3 { font-size: 12px; color: #475569; margin: 16px 0 8px; }
+  .kpi-grid { display: flex; gap: 10px; margin-bottom: 16px; }
+  .kpi { flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; }
+  .kpi .val { font-size: 22px; font-weight: 700; color: #4f46e5; }
+  .kpi .lbl { font-size: 9px; color: #64748b; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
+  th { background: #f1f5f9; text-align: left; padding: 6px 8px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 5px 8px; border-bottom: 1px solid #f1f5f9; }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; }
+  .bar-cell { display: flex; align-items: center; gap: 6px; }
+  .bar { height: 14px; background: linear-gradient(90deg, #4f46e5, #818cf8); border-radius: 3px; min-width: 2px; }
+  .bar-label { flex-shrink: 0; min-width: 40px; text-align: right; font-weight: 600; }
+  .tag { display: inline-block; background: #eef2ff; color: #4f46e5; padding: 1px 6px; border-radius: 3px; font-size: 9px; margin-right: 3px; }
+  .gap-item { padding: 6px 8px; margin-bottom: 4px; background: #fefce8; border-left: 3px solid #eab308; border-radius: 0 4px 4px 0; font-size: 10px; }
+  .footer { margin-top: 40px; text-align: center; font-size: 8px; color: #cbd5e1; }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+<div id="header">{{ brand_name }} · {{ t('visibility_report') }} · {{ generated_at }}</div>
+
+<div class="cover">
+  <h1>{{ brand_name }}</h1>
+  <div class="sub">{{ t('visibility_report') }}</div>
+  <div class="meta">{{ generated_at }} · {{ t('last_n_days', n=days) }}</div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi"><div class="val">{{ '%.0f'|format(visibility) }}%</div><div class="lbl">{{ t('visibility_pct') }}</div></div>
+  <div class="kpi"><div class="val">{{ runs }}</div><div class="lbl">{{ t('evaluations') }}</div></div>
+  <div class="kpi"><div class="val">{{ citations }}</div><div class="lbl">{{ t('total_citations') }}</div></div>
+  <div class="kpi"><div class="val">{{ comp_count }}</div><div class="lbl">{{ t('brand_competitors') }}</div></div>
+  <div class="kpi"><div class="val">{{ prompts_count }}</div><div class="lbl">{{ t('prompts_tracked') }}</div></div>
+</div>
+
+{% macro svg_bar_chart(items, max_w, item_key, val_key, label_key) %}
+<svg width="100%" height="{{ items|length * 22 + 10 }}" style="font-size:9px;">
+  {% set mx = items | map(attribute=val_key) | max | default(1) %}
+  {% for it in items %}
+  {% set w = (it[val_key] / mx * max_w) | int %}
+  <text x="0" y="{{ loop.index0 * 22 + 15 }}" fill="#475569">{{ it[label_key][:20] }}</text>
+  <rect x="130" y="{{ loop.index0 * 22 + 5 }}" width="{{ w }}" height="14" rx="3" fill="url(#g)"/>
+  <text x="{{ 130 + w + 4 }}" y="{{ loop.index0 * 22 + 16 }}" fill="#64748b">{{ it[val_key] }}</text>
+  {% endfor %}
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4f46e5"/><stop offset="100%" stop-color="#818cf8"/></linearGradient></defs>
+</svg>
+{% endmacro %}
+
+{% macro svg_donut(slices, size) %}
+{% set total = slices | map(attribute='n') | sum | default(1) %}
+{% set colors = ['#4f46e5','#06b6d4','#8b5cf6','#f59e0b','#10b981','#ef4444','#6366f1','#ec4899'] %}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 42 42" style="display:block;margin:0 auto;">
+  <circle cx="21" cy="21" r="15.9" fill="none" stroke="#e2e8f0" stroke-width="6"/>
+  {% set offset = 0 %}
+  {% for s in slices %}
+  {% set pct = s.n / total %}
+  {% set dash = (pct * 100) | round(1) %}
+  <circle cx="21" cy="21" r="15.9" fill="none" stroke="{{ colors[loop.index0 % colors|length] }}" stroke-width="6"
+          stroke-dasharray="{{ dash }} {{ 100 - dash }}" stroke-dashoffset="{{ -offset }}"
+          transform="rotate(-90 21 21)"/>
+  {% set offset = offset + dash %}
+  {% endfor %}
+  <text x="21" y="22" text-anchor="middle" fill="#1e293b" font-size="7" font-weight="700">{{ total }}</text>
+  <text x="21" y="30" text-anchor="middle" fill="#94a3b8" font-size="5">{{ t('evaluations') }}</text>
+</svg>
+<div style="display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;margin-top:6px;font-size:9px;">
+  {% for s in slices %}
+  <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:{{ colors[loop.index0 % colors|length] }};vertical-align:middle;margin-right:3px;"></span>{{ s.name }} {{ s.n }}</span>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+<!-- Visibility per prompt -->
+<h2>1. {{ t('report_section_visibility') }}</h2>
+<table>
+  <tr><th>{{ t('prompts') }}</th><th class="num" style="width:50px">{{ t('runs_count', n='') }}</th><th style="width:120px">{{ t('visibility_label') }}</th></tr>
+  {% for p in prompt_rows %}
+  <tr>
+    <td>{{ p.text[:80] }}{% if p.tags %} <span class="tag">{{ p.tags }}</span>{% endif %}</td>
+    <td class="num">{{ p.runs }}</td>
+    <td><div class="bar-cell"><div class="bar" style="width:{{ (p.visibility / 100 * 100)|int }}px;"></div><span class="bar-label">{{ '%.0f'|format(p.visibility) }}%</span></div></td>
+  </tr>
+  {% endfor %}
+</table>
+
+<!-- Share of Voice -->
+<h2>2. {{ t('share_of_voice') }}</h2>
+{{ svg_bar_chart(sov, 300, 'mentions', 'mentions', 'name') }}
+
+<table>
+  <tr><th>{{ t('brand_col') }}</th><th class="num">{{ t('mentions_col') }}</th><th class="num">{{ t('share_col') }}</th><th class="num">{{ t('avg_position_col') }}</th></tr>
+  {% for s in sov %}
+  <tr>
+    <td>{{ s.name }}{% if s.name == brand_name %} <span class="tag">{{ t('you_tag') }}</span>{% endif %}</td>
+    <td class="num">{{ s.mentions }}</td>
+    <td class="num">{{ '%.0f'|format(s.mentions / total_mentions * 100) if total_mentions else 0 }}%</td>
+    <td class="num">{{ '%.1f'|format(s.avg_pos) }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<div class="page-break"></div>
+
+<!-- Citations -->
+<h2>3. {{ t('citations') }}</h2>
+<h3>{{ t('top_domains') }}</h3>
+{{ svg_bar_chart(top_domains[:10], 310, 'n', 'n', 'domain') }}
+<table>
+  <tr><th>{{ t('brand_col') }}</th><th>{{ t('by_source_type') }}</th><th class="num">{{ t('citations') }}</th></tr>
+  {% for d in top_domains %}
+  <tr><td>{{ d.domain }}</td><td>{{ d.category }}</td><td class="num">{{ d.n }}</td></tr>
+  {% endfor %}
+</table>
+
+<h3>{{ t('top_cited_pages') }}</h3>
+<table>
+  <tr><th>URL</th><th>{{ t('brand_col') }}</th><th class="num">{{ t('citations') }}</th></tr>
+  {% for u in top_urls %}
+  <tr><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ u.url }}</td><td>{{ u.domain }}</td><td class="num">{{ u.n }}</td></tr>
+  {% endfor %}
+</table>
+
+<!-- Engine Distribution -->
+<h2>4. {{ t('report_section_engines') }}</h2>
+<table>
+  <tr><td style="width:180px;vertical-align:top;padding-top:20px;">
+    {% for e in engines %}
+    <div class="bar-cell" style="margin-bottom:6px;">
+      <span style="flex-shrink:0;min-width:70px;font-size:10px;">{{ e.name }}</span>
+      <div class="bar" style="width:{{ (e.n / runs * 180)|int if runs else 0 }}px;"></div>
+      <span class="bar-label">{{ e.n }}</span>
+    </div>
+    {% endfor %}
+  </td>
+  <td style="vertical-align:top;text-align:center;">{{ svg_donut(engines, 160) }}</td></tr>
+</table>
+
+<!-- Growth Opportunities -->
+<h2>5. {{ t('opportunities') }}</h2>
+{% if gaps %}
+{% for g in gaps %}
+<div class="gap-item"><strong>{{ g.text[:100] }}</strong><br>{{ t('competitors_present') }} {{ g.competitors }}</div>
+{% endfor %}
+{% else %}
+<p style="color:#64748b;font-size:10px;">{{ t('no_gaps') }}</p>
+{% endif %}
+
+<div class="footer">{{ t('footer_credit') | striptags }} · {{ generated_at }}</div>
+</body>
+</html>

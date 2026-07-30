@@ -86,8 +86,7 @@ Prompts where competitors appear but **{brand_name}** does not:
 
 def generate_markdown(tenant_id: int, days: int = 30) -> str | None:
     """Generate a markdown GEO visibility report from prism data."""
-    with connect() as conn:
-        d = queries.report_data(conn, tenant_id, days)
+    d = _get_report_data(tenant_id, days)
     if d is None:
         return None
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -146,6 +145,53 @@ def generate_markdown(tenant_id: int, days: int = 30) -> str | None:
         domain_table=domain_table, url_table=url_table,
         engine_table=engine_table, gaps_section=gaps_section,
     )
+
+
+def _get_report_data(tenant_id: int, days: int = 30) -> dict | None:
+    """Fetch all report data from DB, return None if no brand configured."""
+    with connect() as conn:
+        d = queries.report_data(conn, tenant_id, days)
+    return d
+
+
+def generate_visibility_pdf(tenant_id: int, days: int = 30, lang: str = "zh-TW") -> bytes | None:
+    """Generate a PDF visibility report with SVG charts and KPI cards."""
+    from weasyprint import HTML
+    d = _get_report_data(tenant_id, days)
+    if d is None:
+        return None
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    def t(key, **fmt):
+        return i18n.t(lang, key, **fmt)
+
+    # Convert sov rows to plain dicts for template
+    sov_list = [dict(s) for s in d["sov"]]
+    top_domains = [dict(dm) for dm in d["top_domains"]]
+    top_urls = [dict(u) for u in d["top_urls"]]
+    engines_list = [dict(e) for e in d["engines"]]
+    gaps_list = [dict(g) for g in d["gaps"]]
+    prompt_rows = [dict(p) for p in d["prompt_rows"]]
+
+    html_str = _ENV.get_template("visibility_report.html").render(
+        lang=lang, t=t,
+        brand_name=d["brand"]["name"],
+        generated_at=now, days=days,
+        visibility=d["visibility"],
+        runs=d["runs"],
+        citations=d["citations"],
+        comp_count=len(d["competitors"]),
+        prompts_count=d["prompts_count"],
+        prompt_rows=prompt_rows,
+        sov=sov_list,
+        total_mentions=d["total_mentions"],
+        top_domains=top_domains,
+        top_urls=top_urls,
+        engines=engines_list,
+        gaps=gaps_list,
+    )
+    return HTML(string=html_str).write_pdf()
 
 
 def _esc(s: str) -> str:

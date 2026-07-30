@@ -716,14 +716,23 @@ def reports_page(request: Request):
 
 
 @app.get("/reports/download")
-def reports_download(request: Request, days: int = 30):
+def reports_download(request: Request, days: int = 30, format: str = "md"):
     tenant = _tenant(request)
-    md = report.generate_markdown(tenant["id"], days)
-    if md is None:
-        return RedirectResponse("/reports", 303)
+    lang = _resolve_lang(request)
     with connect() as conn:
         own = workspace.own_brand(conn, tenant["id"])
     brand_slug = (own["name"] if own else "brand").lower().replace(" ", "-")
+    if format == "pdf":
+        pdf = report.generate_visibility_pdf(tenant["id"], days, lang=lang)
+        if pdf is None:
+            return RedirectResponse("/reports", 303)
+        from fastapi.responses import Response
+        return Response(pdf, media_type="application/pdf",
+                        headers={"Content-Disposition":
+                                 f'attachment; filename="geo-visibility-{brand_slug}-{days}d.pdf"'})
+    md = report.generate_markdown(tenant["id"], days)
+    if md is None:
+        return RedirectResponse("/reports", 303)
     filename = f"geo-visibility-{brand_slug}-{days}d.md"
     from fastapi.responses import Response
     return Response(md, media_type="text/markdown; charset=utf-8",
