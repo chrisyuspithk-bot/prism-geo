@@ -392,3 +392,121 @@ def models(conn) -> list:
 def brands(conn, tenant_id: int) -> list:
     return q(conn, "SELECT * FROM brands WHERE tenant_id = ? ORDER BY is_own DESC, name",
              (tenant_id,))
+
+
+def report_data(conn, tenant_id: int, days: int = 30) -> dict:
+    """All data needed for a GEO visibility report."""
+    own = q1(conn, "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 1", (tenant_id,))
+    if own is None:
+        return None
+    window = f"-{days} days"
+    comps = q(conn,
+        "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 0 ORDER BY name",
+        (tenant_id,))
+
+    # Visibility overall
+    vis = q1(conn,
+        """SELECT COUNT(*) AS total,
+                  SUM(CASE WHEN m.id IS NOT NULL THEN 1 ELSE 0 END) AS mentioned
+           FROM runs r
+           LEFT JOIN mentions m ON m.run_id = r.id AND m.brand_id = ?
+           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) AND r.status = 'ok'""",
+        (own["id"], tenant_id, window))
+    visibility = stats.overall_visibility(vis["total"] or 0, vis["mentioned"] or 0)
+
+    # Stats
+    totals = q1(conn,
+        """SELECT COUNT(*) AS runs, COUNT(DISTINCT r.prompt_id) AS prompts
+           FROM runs r WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?)""",
+        (tenant_id, window))
+    cited = q1(conn,
+        """SELECT COUNT(*) AS n FROM citations c JOIN runs r ON r.id = c.run_id
+           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?)""",
+        (tenant_id, window))
+    last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ?", (tenant_id,))
+
+    # Per-prompt visibility
+    prompts = q(conn,
+        """SELECT p.id, p.text, p.tags,
+                  COUNT(r.id) AS runs,
+                  SUM(CASE WHEN m.id IS NOT NULL THEN 1 ELSE 0 END) AS mentioned
+           FROM prompts p
+           LEFT JOIN runs r ON r.prompt_id = p.id AND r.status = 'ok'
+             AND r.ran_at >= datetime('now', ?)
+           LEFT JOIN mentions m ON m.run_id = r.id AND m.brand_id = ?
+           WHERE p.active = 1 AND p.tenant_id = ?
+           GROUP BY p.id ORDER BY p.id""",
+        (window, own["id"], tenant_id))
+    prompt_rows = []
+    for p in prompts:
+        pv = stats.overall_visibility(p["runs"] or 0, p["mentioned"] or 0)
+        prompt_rows.append({"text": p["text"], "tags": p["tags"], "runs": p["runs"],
+                            "visibility": pv})
+
+    # Share of voice
+    sov = q(conn,
+        """SELECT b.name, COUNT(DISTINCT m.run_id) AS mentions,
+                  AVG(m.position) AS avg_pos, COUNT(DISTINCT r.prompt_id) AS prompts
+           FROM brands b
+           JOIN mentions m ON m.brand_id = b.id
+           JOIN runs r ON r.id = m.run_id
+           WHERE b.tenant_id = ? AND r.status = 'ok'
+             AND r.ran_at >= datetime('now', ?)
+           GROUP BY b.id ORDER BY mentions DESC""",
+        (tenant_id, window))
+    total_mentions = sum(s["mentions"] for s in sov)
+
+    # Top citations
+    top_domains = q(conn,
+        """SELECT c.domain, c.category, COUNT(*) AS n
+           FROM citations c JOIN runs r ON r.id = c.run_id
+           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?)
+           GROUP BY c.domain ORDER BY n DESC LIMIT 15""",
+        (tenant_id, window))
+    top_urls = q(conn,
+        """SELECT c.url, c.domain, COUNT(*) AS n
+           FROM citations c JOIN runs r ON r.id = c.run_id
+           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?)
+           GROUP BY c.url ORDER BY n DESC LIMIT 15""",
+        (tenant_id, window))
+
+    # Engine breakdown
+    engines = q(conn,
+        """SELECT m.name, COUNT(*) AS n
+           FROM runs r JOIN models m ON m.id = r.model_id
+           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?)
+           GROUP BY m.name ORDER BY n DESC""",
+        (tenant_id, window))
+
+    # Competitor per-prompt gaps (opportunities)
+    gaps = []
+    for p in prompts:
+        if p["runs"] and p["mentioned"] == 0:
+            comps_here = q(conn,
+                """SELECT DISTINCT b.name FROM mentions m
+                   JOIN brands b ON b.id = m.brand_id
+                   JOIN runs r ON r.id = m.run_id
+                   WHERE r.prompt_id = ? AND r.status = 'ok'
+                     AND b.tenant_id = ? AND b.is_own = 0""",
+                (p["id"], tenant_id))
+            if comps_here:
+                gaps.append({"text": p["text"],
+                             "competitors": ", ".join(c["name"] for c in comps_here)})
+
+    return {
+        "brand": dict(own),
+        "competitors": [dict(c) for c in comps],
+        "visibility": visibility,
+        "runs": totals["runs"] or 0,
+        "prompts_count": totals["prompts"] or 0,
+        "citations": cited["n"] or 0,
+        "last_run": last["t"],
+        "days": days,
+        "prompt_rows": prompt_rows,
+        "sov": _dicts(sov),
+        "total_mentions": total_mentions,
+        "top_domains": _dicts(top_domains),
+        "top_urls": _dicts(top_urls),
+        "engines": _dicts(engines),
+        "gaps": gaps,
+    }

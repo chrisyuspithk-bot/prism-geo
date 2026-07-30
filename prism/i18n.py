@@ -221,7 +221,26 @@ STRINGS = {
     "language": {"zh-TW": "語言", "en": "Language"},
 
     # --- reports ---
-    "download_report": {"zh-TW": "下載報表", "en": "Download report"},
+    "reports": {"zh-TW": "報告", "en": "Reports"},
+    "reports_desc": {"zh-TW": "下載 GEO 可見度報告（Markdown 格式）。", "en": "Download GEO visibility reports in Markdown."},
+    "reports_need_brand": {"zh-TW": "請先設定品牌以生成報告。", "en": "Set up your brand first to generate reports."},
+    "reports_generate_desc": {"zh-TW": "為 {name} 生成結構化的 GEO 可見度報告。", "en": "Generate a structured GEO visibility report for {name}."},
+    "generate_report": {"zh-TW": "生成報告", "en": "Generate report"},
+    "period": {"zh-TW": "期間", "en": "Period"},
+    "last_7_days": {"zh-TW": "過去 7 天", "en": "Last 7 days"},
+    "last_30_days": {"zh-TW": "過去 30 天", "en": "Last 30 days"},
+    "last_90_days": {"zh-TW": "過去 90 天", "en": "Last 90 days"},
+    "format": {"zh-TW": "格式", "en": "Format"},
+    "download_report": {"zh-TW": "下載報告", "en": "Download report"},
+    "report_includes": {"zh-TW": "報告內容", "en": "Report includes"},
+    "report_section_overview": {"zh-TW": "整體概覽（可見度、評估數、引用數）", "en": "Overview (visibility, evaluations, citations)"},
+    "report_section_visibility": {"zh-TW": "各提問可見度明細", "en": "Per-prompt visibility breakdown"},
+    "report_section_sov": {"zh-TW": "品牌聲量佔比對比", "en": "Share of voice comparison"},
+    "report_section_citations": {"zh-TW": "熱門引用網域與頁面", "en": "Top cited domains and pages"},
+    "report_section_engines": {"zh-TW": "引擎分佈佔比", "en": "Engine distribution"},
+    "report_section_gaps": {"zh-TW": "成長機會（競爭者出現但你未出現的提問）", "en": "Growth gaps (prompts where competitors appear but you don't)"},
+
+    # --- existing report keys (PDF) ---
     "weekly": {"zh-TW": "每週", "en": "Weekly"},
     "monthly": {"zh-TW": "每月", "en": "Monthly"},
     "report_title": {"zh-TW": "GEO 可見度報告 — {brand}", "en": "GEO Visibility Report — {brand}"},

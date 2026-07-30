@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ t('reports') }}{% endblock %}
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-semibold tracking-tight">{{ t('reports') }}</h1>
+  <p class="mt-1 text-sm text-slate-500">{{ t('reports_desc') }}</p>
+</div>
+
+{% if not has_data or not brand %}
+<div class="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+  <h2 class="text-lg font-semibold text-slate-700 mb-2">{{ t('no_brand_title') }}</h2>
+  <p class="text-sm text-slate-500 mb-4">{{ t('reports_need_brand') }}</p>
+  <a href="/setup?tenant={{ tenant.id }}" class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('setup_your_brand') }}</a>
+</div>
+{% else %}
+<div class="rounded-xl border border-slate-200 bg-white p-6">
+  <h2 class="mb-4 font-semibold">{{ t('generate_report') }}</h2>
+  <p class="mb-4 text-sm text-slate-500">{{ t('reports_generate_desc', name=brand.name) }}</p>
+
+  <form method="get" action="/reports/download" class="flex items-end gap-4">
+    <div>
+      <label class="block text-xs font-medium text-slate-500 mb-1">{{ t('period') }}</label>
+      <select name="days" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+        <option value="7">{{ t('last_7_days') }}</option>
+        <option value="30" selected>{{ t('last_30_days') }}</option>
+        <option value="90">{{ t('last_90_days') }}</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-slate-500 mb-1">{{ t('format') }}</label>
+      <p class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-600">Markdown (.md)</p>
+    </div>
+    <button type="submit" class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+      {{ t('download_report') }}
+    </button>
+  </form>
+</div>
+
+<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+  <h2 class="mb-3 font-semibold">{{ t('report_includes') }}</h2>
+  <ul class="space-y-1.5 text-sm text-slate-600">
+    <li class="flex items-start gap-2"><span class="mt-0.5 text-indigo-500">&#10003;</span> {{ t('report_section_overview') }}</li>
+    <li class="flex items-start gap-2"><span class="mt-0.5 text-indigo-500">&#10003;</span> {{ t('report_section_visibility') }}</li>
+    <li class="flex items-start gap-2"><span class="mt-0.5 text-indigo-500">&#10003;</span> {{ t('report_section_sov') }}</li>
+    <li class="flex items-start gap-2"><span class="mt-0.5 text-indigo-500">&#10003;</span> {{ t('report_section_citations') }}</li>
+    <li class="flex items-start gap-2"><span class="mt-0.5 text-indigo-500">&#10003;</span> {{ t('report_section_engines') }}</li>
+    <li class="flex items-start gap-2"><span class="mt-0.5 text-indigo-500">&#10003;</span> {{ t('report_section_gaps') }}</li>
+  </ul>
+</div>
+{% endif %}
+{% endblock %}

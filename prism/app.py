@@ -663,6 +663,32 @@ def draft_delete(request: Request, draft_id: int):
     return RedirectResponse(f"/drafts?lang={_resolve_lang(request)}", 303)
 
 
+@app.get("/reports", response_class=HTMLResponse)
+def reports_page(request: Request):
+    tenant = _tenant(request)
+    with connect() as conn:
+        own = workspace.own_brand(conn, tenant["id"])
+        has_data = own is not None
+    return templates.TemplateResponse(
+        request, "reports.html",
+        context=ctx(request, page="reports", has_data=has_data, brand=own))
+
+
+@app.get("/reports/download")
+def reports_download(request: Request, days: int = 30):
+    tenant = _tenant(request)
+    md = report.generate_markdown(tenant["id"], days)
+    if md is None:
+        return RedirectResponse("/reports", 303)
+    with connect() as conn:
+        own = workspace.own_brand(conn, tenant["id"])
+    brand_slug = (own["name"] if own else "brand").lower().replace(" ", "-")
+    filename = f"geo-visibility-{brand_slug}-{days}d.md"
+    from fastapi.responses import Response
+    return Response(md, media_type="text/markdown; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
 def _run_crawl(site_id: int, domain: str):
     """Run crawl synchronously (in background via FastAPI thread pool)."""
     with connect() as conn:
