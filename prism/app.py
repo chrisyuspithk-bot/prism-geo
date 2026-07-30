@@ -422,6 +422,18 @@ def save_keys(request: Request, provider: str = Form(...),
         if model.strip():
             keystore.set_value(f"{prefix}_model", model.strip())
         keystore.set_value(f"{prefix}_enabled", "1" if enabled == "1" else "0")
+        return RedirectResponse("/settings/keys?saved=1", status_code=303)
+    # New custom engine from "+ Add Engine" dropdown
+    if provider == "__custom__":
+        cid = keystore.add_custom_engine()
+        prefix = f"custom_{cid}"
+        if api_key.strip():
+            keystore.set_value(f"{prefix}_api_key", api_key.strip())
+        if base_url.strip():
+            keystore.set_value(f"{prefix}_base_url", base_url.strip())
+        if model.strip():
+            keystore.set_value(f"{prefix}_model", model.strip())
+        keystore.set_value(f"{prefix}_enabled", "1" if enabled == "1" else "0")
     return RedirectResponse("/settings/keys?saved=1", status_code=303)
 
 
@@ -439,12 +451,6 @@ def clear_key(provider: str):
     m = re.match(r'^custom_(\d+)$', provider)
     if m:
         keystore.remove_custom_engine(int(m.group(1)))
-    return RedirectResponse("/settings/keys", status_code=303)
-
-
-@app.post("/settings/keys/custom/add")
-def add_custom_engine():
-    keystore.add_custom_engine()
     return RedirectResponse("/settings/keys", status_code=303)
 
 
