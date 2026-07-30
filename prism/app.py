@@ -800,30 +800,30 @@ def reports_download(request: Request, days: int = 30, format: str = "md"):
 _audit_jobs: dict[str, dict] = {}
 
 
-def _audit_worker(job_id: str, tenant_id: int, days: int):
+def _audit_worker(job_id: str, tenant_id: int, days: int, lang: str = "zh-TW"):
     """Run audit generation in background, updating _audit_jobs with dummy progress."""
     now = time.time()
     try:
-        _audit_jobs[job_id] = {"progress": 5, "label": "正在讀取網站數據…", "done": False, "_ts": now}
+        _audit_jobs[job_id] = {"progress": 5, "label": "正在讀取網站數據…" if lang == "zh-TW" else "Reading website data…", "done": False, "_ts": now}
 
         data = audit_report.build_audit_data(tenant_id, days)
         if data is None:
-            _audit_jobs[job_id] = {"progress": 0, "label": "錯誤", "done": True, "error": "無品牌數據", "_ts": now}
+            _audit_jobs[job_id] = {"progress": 0, "label": "錯誤" if lang == "zh-TW" else "Error", "done": True, "error": "無品牌數據" if lang == "zh-TW" else "No brand data", "_ts": now}
             return
 
         api_key, base_url, model = audit_report._get_llm()
         if not api_key:
-            _audit_jobs[job_id] = {"progress": 0, "label": "錯誤", "done": True, "error": "未設定 LLM API 金鑰", "_ts": now}
+            _audit_jobs[job_id] = {"progress": 0, "label": "錯誤" if lang == "zh-TW" else "Error", "done": True, "error": "未設定 LLM API 金鑰" if lang == "zh-TW" else "No LLM API key configured", "_ts": now}
             return
 
         # Run the analysis (single LLM call in the d0e0416 version)
-        _audit_jobs[job_id] = {"progress": 20, "label": "分析網站內容與 AI 可見度…", "_ts": now}
-        data = audit_report.analyze(tenant_id, days)
+        _audit_jobs[job_id] = {"progress": 20, "label": "分析網站內容與 AI 可見度…" if lang == "zh-TW" else "Analyzing website content & AI visibility…", "_ts": now}
+        data = audit_report.analyze(tenant_id, days, lang)
         if data is None or data.get("error"):
-            _audit_jobs[job_id] = {"progress": 0, "label": "錯誤", "done": True, "error": "分析失敗", "_ts": now}
+            _audit_jobs[job_id] = {"progress": 0, "label": "錯誤" if lang == "zh-TW" else "Error", "done": True, "error": "分析失敗" if lang == "zh-TW" else "Analysis failed", "_ts": now}
             return
 
-        _audit_jobs[job_id] = {"progress": 80, "label": "生成 PDF 報告…", "_ts": now}
+        _audit_jobs[job_id] = {"progress": 80, "label": "生成 PDF 報告…" if lang == "zh-TW" else "Generating PDF report…", "_ts": now}
         from weasyprint import HTML
         from jinja2 import Environment, FileSystemLoader
         env = Environment(loader=FileSystemLoader(str(BASE / "templates")))
@@ -831,9 +831,9 @@ def _audit_worker(job_id: str, tenant_id: int, days: int):
         html_str = template.render(**data)
         pdf_bytes = HTML(string=html_str).write_pdf()
 
-        _audit_jobs[job_id] = {"progress": 100, "label": "完成", "done": True, "pdf": pdf_bytes, "_ts": time.time()}
+        _audit_jobs[job_id] = {"progress": 100, "label": "完成" if lang == "zh-TW" else "Done", "done": True, "pdf": pdf_bytes, "_ts": time.time()}
     except Exception as e:
-        _audit_jobs[job_id] = {"progress": 0, "label": "錯誤", "done": True, "error": str(e)[:300], "_ts": time.time()}
+        _audit_jobs[job_id] = {"progress": 0, "label": "錯誤" if lang == "zh-TW" else "Error", "done": True, "error": str(e)[:300], "_ts": time.time()}
 
     # Cleanup old jobs (>10 min)
     now2 = time.time()
@@ -846,7 +846,8 @@ def _audit_worker(job_id: str, tenant_id: int, days: int):
 def reports_audit_download(request: Request, days: int = 30):
     """Generate and download a comprehensive GEO audit report as PDF."""
     tenant = _tenant(request)
-    pdf_bytes = audit_report.generate_pdf(tenant["id"], days)
+    lang = _resolve_lang(request)
+    pdf_bytes = audit_report.generate_pdf(tenant["id"], days, lang)
     if pdf_bytes is None:
         return RedirectResponse("/reports", 303)
     with connect() as conn:
@@ -867,9 +868,10 @@ def reports_audit_loading(request: Request):
 def api_audit_start(request: Request, days: int = 30):
     """Start background audit generation, return job ID."""
     tenant = _tenant(request)
+    lang = _resolve_lang(request)
     job_id = uuid.uuid4().hex[:12]
-    _audit_jobs[job_id] = {"progress": 0, "label": "準備中…", "done": False, "_ts": time.time()}
-    t = Thread(target=_audit_worker, args=(job_id, tenant["id"], days), daemon=True)
+    _audit_jobs[job_id] = {"progress": 0, "label": "準備中…" if lang == "zh-TW" else "Preparing…", "done": False, "_ts": time.time()}
+    t = Thread(target=_audit_worker, args=(job_id, tenant["id"], days, lang), daemon=True)
     t.start()
     return JSONResponse({"job_id": job_id})
 
