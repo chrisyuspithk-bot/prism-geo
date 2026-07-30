@@ -61,8 +61,9 @@
     </thead>
     <tbody>
       {% for p in pages %}
-      <tr class="border-b border-slate-100 last:border-0">
-        <td class="px-5 py-3 font-medium">{{ p.title or p.path }}</td>
+      <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50 cursor-pointer"
+          onclick="location.href='/sites/{{ site.id }}/pages/{{ p.id }}'">
+        <td class="px-5 py-3 font-medium text-indigo-700">{{ p.title or p.path }}</td>
         <td class="px-5 py-3 text-slate-500 max-w-xs truncate">{{ p.url }}</td>
         <td class="px-5 py-3 text-slate-500">{{ p.chunk_count }}</td>
       </tr>

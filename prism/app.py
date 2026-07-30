@@ -644,6 +644,21 @@ def delete_site(request: Request, site_id: int):
     return RedirectResponse(f"/sites?lang={_resolve_lang(request)}", 303)
 
 
+@app.get("/sites/{site_id}/pages/{page_id}", response_class=HTMLResponse)
+def page_detail(request: Request, site_id: int, page_id: int):
+    tenant = _tenant(request)
+    with connect() as conn:
+        site = q1(conn, "SELECT * FROM sites WHERE id = ? AND tenant_id = ?", (site_id, tenant["id"]))
+        if not site:
+            return RedirectResponse("/sites", 303)
+        page_row = q1(conn, "SELECT * FROM pages WHERE id = ? AND site_id = ?", (page_id, site_id))
+        if not page_row:
+            return RedirectResponse(f"/sites/{site_id}", 303)
+    return templates.TemplateResponse(
+        request, "page_detail.html",
+        context=ctx(request, page="sites", site=dict(site), page_data=dict(page_row)))
+
+
 @app.get("/sites/{site_id}/generate", response_class=HTMLResponse)
 def generate_page(request: Request, site_id: int):
     tenant = _tenant(request)

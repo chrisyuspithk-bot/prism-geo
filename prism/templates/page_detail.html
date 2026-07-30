@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ page_data.title or page_data.path }}{% endblock %}
+{% block content %}
+<div class="mb-6">
+  <a href="/sites/{{ site.id }}" class="text-sm font-medium text-indigo-600 hover:underline">← {{ t('back_to_site') }}: {{ site.domain }}</a>
+  <h1 class="mt-2 text-xl font-semibold tracking-tight">{{ page_data.title or page_data.path }}</h1>
+  <p class="mt-1 text-sm text-slate-500 break-all">{{ page_data.url }}</p>
+</div>
+
+<div class="rounded-xl border border-slate-200 bg-white p-6">
+  <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-400">Page Content</h2>
+  <div class="prose prose-sm max-w-none text-slate-700 whitespace-pre-wrap leading-relaxed">{{ page_data.content }}</div>
+</div>
+
+{% if page_data.headings %}
+<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+  <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Headings</h2>
+  <pre class="text-sm text-slate-600 whitespace-pre-wrap">{{ page_data.headings }}</pre>
+</div>
+{% endif %}
+{% endblock %}
