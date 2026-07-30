@@ -151,7 +151,7 @@
         {{ t('enabled') }}
       </label>
       <label class="flex items-center gap-2 text-sm text-slate-600">
-        UTC
+        HKT (GMT+8)
         <select name="hour" class="rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:border-indigo-400 focus:outline-none">
           {% for h in range(24) %}
           <option value="{{ h }}" {{ 'selected' if h == schedule_hour }}>{{ '%02d:00'|format(h) }}</option>

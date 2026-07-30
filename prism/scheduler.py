@@ -1,12 +1,12 @@
 """Daily auto-evaluation scheduler.
 
-One asyncio background task that wakes up daily at a configured UTC hour and
+One asyncio background task that wakes up daily at a configured HKT hour and
 inserts a `run_all` job for every tenant. Checks every 60 s so a changed
 schedule_hour takes effect within a minute — no restart needed.
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from . import keystore
 from .db import connect, q
@@ -22,7 +22,7 @@ def _get_config() -> tuple[bool, int]:
         hour = conn.execute(
             "SELECT value FROM settings WHERE key = 'schedule_hour'").fetchone()
     on = (enabled["value"] or "1") == "1" if enabled else True
-    h = int(hour["value"]) if hour else 16  # 16 UTC = 00:00 GMT+8
+    h = int(hour["value"]) if hour else 0  # 0 = midnight HKT (GMT+8)
     return on, h
 
 
@@ -31,7 +31,7 @@ def _set_defaults() -> None:
         conn.execute(
             "INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_enabled', '1')")
         conn.execute(
-            "INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_hour', '16')")
+            "INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_hour', '0')")
 
 
 async def _scheduler() -> None:
@@ -50,11 +50,11 @@ _last_rundate: str = ""
 
 
 def _maybe_run(hour: int) -> None:
-    """If we're in the target hour and haven't run today, queue jobs."""
+    """If we're in the target hour (HKT) and haven't run today, queue jobs."""
     global _last_rundate
-    now = datetime.now(timezone.utc)
-    today = now.strftime("%Y-%m-%d")
-    if now.hour == hour and _last_rundate != today:
+    hkt = datetime.now(timezone.utc) + timedelta(hours=8)
+    today = hkt.strftime("%Y-%m-%d")
+    if hkt.hour == hour and _last_rundate != today:
         if keystore.has_any_key():
             _last_rundate = today
             with connect() as conn:
