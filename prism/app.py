@@ -868,38 +868,46 @@ def reports_audit_result(request: Request, job_id: str):
 def _run_crawl(site_id: int, domain: str):
     """Run crawl synchronously (in background via FastAPI thread pool)."""
     with connect() as conn:
-        conn.execute("UPDATE sites SET status = 'crawling', crawl_error = NULL WHERE id = ?", (site_id,))
+        conn.execute("UPDATE sites SET status = 'crawling', crawl_error = NULL, crawl_progress = '' WHERE id = ?", (site_id,))
 
     import threading
 
     def _do():
         try:
+            with connect() as conn:
+                conn.execute("UPDATE sites SET crawl_progress = 'Discovering pages from sitemap…' WHERE id = ?", (site_id,))
             urls = crawler.discover(domain)
             print(f"[crawl:{site_id}] discovered {len(urls)} URLs for {domain}")
+
             pages_data: list[dict] = []
             seen_urls: set[str] = set()
-            for url in urls:
+            for i, url in enumerate(urls):
                 if url in seen_urls:
                     continue
                 seen_urls.add(url)
+                with connect() as conn:
+                    conn.execute("UPDATE sites SET crawl_progress = ? WHERE id = ?",
+                                 (f"Fetching page {i+1}/{len(urls)}…", site_id))
                 page = crawler.fetch_page(url)
                 if page is not None:
                     pages_data.append(page)
             print(f"[crawl:{site_id}] fetched {len(pages_data)} pages")
 
-            with connect() as conn:
-                conn.execute("DELETE FROM pages WHERE site_id = ?", (site_id,))
-                for page in pages_data:
-                    cur = conn.execute(
-                        "INSERT INTO pages (site_id, url, path, title, headings, content) VALUES (?, ?, ?, ?, ?, ?)",
-                        (site_id, page["url"], page["path"], page["title"], page["headings"], page["content"]),
-                    )
-                    page_id = cur.lastrowid
-                    for i, ch in enumerate(chunk.chunk_text(page["content"])):
-                        conn.execute(
-                            "INSERT INTO chunks (page_id, site_id, seq, content) VALUES (?, ?, ?, ?)",
-                            (page_id, site_id, i, ch),
+            if pages_data:
+                with connect() as conn:
+                    conn.execute("UPDATE sites SET crawl_progress = 'Saving pages…' WHERE id = ?", (site_id,))
+                    conn.execute("DELETE FROM pages WHERE site_id = ?", (site_id,))
+                    for page in pages_data:
+                        cur = conn.execute(
+                            "INSERT INTO pages (site_id, url, path, title, headings, content) VALUES (?, ?, ?, ?, ?, ?)",
+                            (site_id, page["url"], page["path"], page["title"], page["headings"], page["content"]),
                         )
+                        page_id = cur.lastrowid
+                        for i, ch in enumerate(chunk.chunk_text(page["content"])):
+                            conn.execute(
+                                "INSERT INTO chunks (page_id, site_id, seq, content) VALUES (?, ?, ?, ?)",
+                                (page_id, site_id, i, ch),
+                            )
 
             # Compute embeddings in batches (faster than per-chunk)
             with connect() as conn:
@@ -908,6 +916,9 @@ def _run_crawl(site_id: int, domain: str):
                     (site_id,),
                 ).fetchall()
             if rows:
+                with connect() as conn:
+                    conn.execute("UPDATE sites SET crawl_progress = ? WHERE id = ?",
+                                 (f"Computing embeddings for {len(rows)} chunks…", site_id))
                 contents = [r["content"] for r in rows]
                 vecs = embeddings.embed(contents)
                 for r, vec in zip(rows, vecs):
@@ -920,18 +931,18 @@ def _run_crawl(site_id: int, domain: str):
             with connect() as conn:
                 if not pages_data:
                     conn.execute(
-                        "UPDATE sites SET status = 'failed', crawl_error = 'No pages could be fetched (site may block crawlers)', page_count = 0, last_crawled = datetime('now') WHERE id = ?",
+                        "UPDATE sites SET status = 'failed', crawl_error = 'No pages could be fetched (site may block crawlers)', crawl_progress = '', page_count = 0, last_crawled = datetime('now') WHERE id = ?",
                         (site_id,))
                 else:
                     conn.execute(
-                        "UPDATE sites SET status = 'ready', page_count = ?, last_crawled = datetime('now') WHERE id = ?",
+                        "UPDATE sites SET status = 'ready', crawl_progress = '', page_count = ?, last_crawled = datetime('now') WHERE id = ?",
                         (len(pages_data), site_id),
                     )
         except Exception as e:
             print(f"[crawl:{site_id}] FAILED: {e}", flush=True)
             with connect() as conn:
                 conn.execute(
-                    "UPDATE sites SET status = 'failed', crawl_error = ? WHERE id = ?",
+                    "UPDATE sites SET status = 'failed', crawl_error = ?, crawl_progress = '' WHERE id = ?",
                     (str(e)[:500], site_id),
                 )
 

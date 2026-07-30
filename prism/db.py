@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS sites (
     domain TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',  -- pending|crawling|ready|failed
     crawl_error TEXT,
+    crawl_progress TEXT DEFAULT '',
     page_count INTEGER NOT NULL DEFAULT 0,
     last_crawled TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -176,6 +177,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
     run_cols = {r["name"] for r in conn.execute("PRAGMA table_info(runs)")}
     if "job_id" not in run_cols:
         conn.execute("ALTER TABLE runs ADD COLUMN job_id INTEGER")
+
+    # Site crawl_progress (for live progress display)
+    site_cols = {r["name"] for r in conn.execute("PRAGMA table_info(sites)")}
+    if "crawl_progress" not in site_cols:
+        conn.execute("ALTER TABLE sites ADD COLUMN crawl_progress TEXT DEFAULT ''")
 
     # Multi-tenant: ensure a default tenant exists and every row is scoped.
     # Note: SQLite can't ALTER-in a REFERENCES column with a non-NULL default,

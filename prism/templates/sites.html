@@ -18,9 +18,11 @@
 </div>
 
 {% if sites %}
+{% set has_crawling = sites | selectattr('status', 'equalto', 'crawling') | list | length > 0 %}
 <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
   {% for s in sites %}
-  <div class="rounded-xl border border-slate-200 bg-white p-5 hover:border-indigo-300 hover:shadow-sm transition-all">
+  <div class="rounded-xl border border-slate-200 bg-white p-5 hover:border-indigo-300 hover:shadow-sm transition-all"
+       {% if s.status == 'crawling' %}data-crawling{% endif %}>
     <a href="/sites/{{ s.id }}" class="block">
       <div class="flex items-center justify-between mb-3">
         <h3 class="font-semibold text-slate-900 truncate">{{ s.domain }}</h3>
@@ -28,6 +30,12 @@
         {% set colors = {'pending': 'bg-slate-100 text-slate-600', 'crawling': 'bg-amber-100 text-amber-700', 'ready': 'bg-emerald-100 text-emerald-700', 'failed': 'bg-red-100 text-red-600'} %}
         <span class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold {{ colors.get(s.status, colors.pending) }}">{{ t(sc) }}</span>
       </div>
+      {% if s.status == 'crawling' and s.crawl_progress %}
+      <div class="mb-2 flex items-center gap-2 text-xs text-amber-600">
+        <svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        {{ s.crawl_progress }}
+      </div>
+      {% endif %}
       <div class="text-sm text-slate-500">
         <span>{{ t('pages_count', n=s.page_count) }}</span>
         {% if s.last_crawled %}
@@ -47,5 +55,20 @@
 <div class="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
   <p class="text-slate-500">{{ t('no_sites') }}</p>
 </div>
+{% endif %}
+
+{% if has_crawling %}
+<script>
+(function poll() {
+  fetch('/sites?' + new URLSearchParams({partial: '1'}), {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+    .then(r => r.text())
+    .then(html => {
+      const div = document.createElement('div'); div.innerHTML = html;
+      const stillCrawling = div.querySelectorAll('[data-crawling]').length > 0;
+      document.querySelector('.grid').innerHTML = div.querySelector('.grid')?.innerHTML || '';
+      if (stillCrawling) setTimeout(poll, 2000);
+    });
+})();
+</script>
 {% endif %}
 {% endblock %}
