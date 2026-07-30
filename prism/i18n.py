@@ -356,6 +356,19 @@ STRINGS = {
     "geo_audit_report_no_sites": {"zh-TW": "需先爬取網站內容才能生成完整審計報告。", "en": "A crawled website is needed to generate the full audit report."},
     "report_quick_desc": {"zh-TW": "純數據 Markdown 報告（可見度、聲量、引用、引擎分佈）。", "en": "Data-only Markdown report (visibility, share of voice, citations, engines)."},
 
+    # --- report overlay ---
+    "preparing": {"zh-TW": "準備中", "en": "Preparing"},
+    "label_reading_data": {"zh-TW": "數據讀取", "en": "Reading data"},
+    "label_ai_analysis": {"zh-TW": "AI 分析", "en": "AI Analysis"},
+    "label_generating_pdf": {"zh-TW": "生成 PDF", "en": "Generating PDF"},
+    "label_done": {"zh-TW": "完成", "en": "Done"},
+    "report_overlay_audit_title": {"zh-TW": "正在生成 GEO 審計報告", "en": "Generating GEO Audit Report"},
+    "report_overlay_vis_title": {"zh-TW": "正在生成可見度報告", "en": "Generating Visibility Report"},
+    "report_ready": {"zh-TW": "報告已生成", "en": "Report Ready"},
+    "label_download_starting": {"zh-TW": "下載開始", "en": "Download starting"},
+    "label_generation_failed": {"zh-TW": "生成失敗", "en": "Generation failed"},
+    "label_try_again": {"zh-TW": "請稍後再試", "en": "Please try again later"},
+
     # --- engine keys page ---
     "add_engine": {"zh-TW": "＋ 新增引擎", "en": "＋ Add Engine"},
     "add_engine_btn": {"zh-TW": "新增", "en": "Add"},

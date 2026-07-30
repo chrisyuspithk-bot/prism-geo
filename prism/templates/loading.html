@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-HK">
+<html lang="{{ lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>正在生成報告…</title>
+<title>{{ t('report_overlay_audit_title') }}…</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { 
@@ -30,14 +30,14 @@
 </head>
 <body>
 <div class="card">
-  <h2 id="status">🎯 正在生成 GEO 審計報告</h2>
-  <div class="step-label" id="label">準備中…</div>
+  <h2 id="status">🎯 {{ t('report_overlay_audit_title') }}</h2>
+  <div class="step-label" id="label">{{ t('preparing') }}…</div>
   <div class="bar-track"><div class="bar-fill" id="bar"></div></div>
   <div class="steps">
-    <span data-th="10">內容分析</span>
-    <span data-th="40">策略評估</span>
-    <span data-th="70">路線圖</span>
-    <span data-th="90">生成 PDF</span>
+    <span data-th="10">{{ t('label_reading_data') }}</span>
+    <span data-th="40">{{ t('label_ai_analysis') }}</span>
+    <span data-th="70">{{ t('audit_section_roadmap') }}</span>
+    <span data-th="90">{{ t('label_generating_pdf') }}</span>
   </div>
   <p class="error" id="err"></p>
 </div>
@@ -46,12 +46,10 @@
   const params = new URLSearchParams(window.location.search);
   const days = params.get('days') || '30';
   try {
-    // Start the audit job
     const start = await fetch('/api/audit/start?days=' + days, { method: 'POST', credentials: 'same-origin' });
-    if (!start.ok) throw new Error('無法啟動報告生成');
+    if (!start.ok) throw new Error('Failed to start report generation');
     const { job_id } = await start.json();
 
-    // Poll for progress
     const bar = document.getElementById('bar');
     const label = document.getElementById('label');
     const steps = document.querySelectorAll('.steps span');
@@ -77,9 +75,8 @@
 
       if (data.done) {
         if (data.error) throw new Error(data.error);
-        status.textContent = '✅ 報告已生成';
-        label.textContent = '下載開始…';
-        // Download the PDF
+        status.textContent = '✅ {{ t("report_ready") }}';
+        label.textContent = '{{ t("label_download_starting") }}…';
         var a = document.createElement('a');
         a.href = '/reports/audit/result/' + job_id;
         a.download = 'geo-audit-report.pdf';
@@ -90,8 +87,8 @@
     }
   } catch(e) {
     document.getElementById('bar').style.background = '#fecaca';
-    document.getElementById('status').textContent = '❌ 生成失敗';
-    document.getElementById('label').textContent = '請稍後再試或聯絡管理員';
+    document.getElementById('status').textContent = '❌ {{ t("label_generation_failed") }}';
+    document.getElementById('label').textContent = '{{ t("label_try_again") }}';
     document.getElementById('err').style.display = 'block';
     document.getElementById('err').textContent = e.message;
   }

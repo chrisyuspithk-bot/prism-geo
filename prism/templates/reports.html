@@ -69,13 +69,13 @@
 <!-- OVERLAY -->
 <div id="auditOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,0.45);backdrop-filter:blur(2px);align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:16px;box-shadow:0 25px 50px rgba(0,0,0,0.15);padding:36px 48px;max-width:400px;width:90%;text-align:center;">
-    <h2 id="overlayStatus" style="font-size:15px;color:#1e293b;margin:0 0 4px;font-weight:600;">🎯 正在生成 GEO 審計報告</h2>
-    <div id="overlayLabel" style="font-size:12px;color:#64748b;margin-bottom:14px;">準備中…</div>
+    <h2 id="overlayStatus" style="font-size:15px;color:#1e293b;margin:0 0 4px;font-weight:600;"></h2>
+    <div id="overlayLabel" style="font-size:12px;color:#64748b;margin-bottom:14px;">{{ t('preparing') }}…</div>
     <div style="height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:10px;">
       <div id="overlayBar" style="height:100%;width:0%;background:linear-gradient(90deg,#4f46e5,#7c3aed);border-radius:999px;transition:width 0.4s;"></div>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;">
-      <span data-th="20">數據讀取</span><span data-th="60">AI 分析</span><span data-th="80">生成 PDF</span><span data-th="100">完成</span>
+      <span data-th="20">{{ t('label_reading_data') }}</span><span data-th="60">{{ t('label_ai_analysis') }}</span><span data-th="80">{{ t('label_generating_pdf') }}</span><span data-th="100">{{ t('label_done') }}</span>
     </div>
     <div id="overlayErr" style="display:none;color:#dc2626;font-size:12px;margin-top:12px;"></div>
   </div>
@@ -91,8 +91,8 @@ document.getElementById('visDays').addEventListener('change', function() {
 function downloadVisPDF() {
   var overlay = document.getElementById('auditOverlay');
   overlay.style.display = 'flex';
-  document.getElementById('overlayStatus').textContent = '📊 正在生成可見度報告';
-  document.getElementById('overlayLabel').textContent = '生成 PDF 中…';
+  document.getElementById('overlayStatus').textContent = '📊 {{ t("report_overlay_vis_title") }}';
+  document.getElementById('overlayLabel').textContent = '{{ t("label_generating_pdf") }}…';
   document.getElementById('overlayBar').style.width = '40%';
   document.getElementById('overlayErr').style.display = 'none';
 
@@ -105,7 +105,7 @@ function downloadVisPDF() {
   document.body.removeChild(a);
 
   document.getElementById('overlayBar').style.width = '100%';
-  document.getElementById('overlayStatus').textContent = '✅ 報告已生成';
+  document.getElementById('overlayStatus').textContent = '✅ {{ t("report_ready") }}';
   setTimeout(function() {
     overlay.style.display = 'none';
   }, 1500);
@@ -114,8 +114,8 @@ function downloadVisPDF() {
 function startAudit() {
   var overlay = document.getElementById('auditOverlay');
   overlay.style.display = 'flex';
-  document.getElementById('overlayStatus').textContent = '🎯 正在生成 GEO 審計報告';
-  document.getElementById('overlayLabel').textContent = '準備中…';
+  document.getElementById('overlayStatus').textContent = '🎯 {{ t("report_overlay_audit_title") }}';
+  document.getElementById('overlayLabel').textContent = '{{ t("preparing") }}…';
   document.getElementById('overlayBar').style.width = '0%';
   document.getElementById('overlayErr').style.display = 'none';
   document.getElementById('btnAudit').disabled = true;
@@ -149,8 +149,8 @@ function pollAudit(jobId) {
           if (d.error) {
             showAuditError(d.error);
           } else {
-            document.getElementById('overlayStatus').textContent = '✅ 報告已生成';
-            document.getElementById('overlayLabel').textContent = '下載開始…';
+            document.getElementById('overlayStatus').textContent = '✅ {{ t("report_ready") }}';
+            document.getElementById('overlayLabel').textContent = '{{ t("label_download_starting") }}…';
             var a = document.createElement('a');
             a.href = '/reports/audit/result/' + jobId;
             a.download = 'geo-audit-report.pdf';
@@ -167,8 +167,8 @@ function pollAudit(jobId) {
 
 function showAuditError(msg) {
   clearInterval(_auditPolling);
-  document.getElementById('overlayStatus').textContent = '❌ 生成失敗';
-  document.getElementById('overlayLabel').textContent = '請稍後再試';
+  document.getElementById('overlayStatus').textContent = '❌ {{ t("label_generation_failed") }}';
+  document.getElementById('overlayLabel').textContent = '{{ t("label_try_again") }}';
   document.getElementById('overlayErr').style.display = 'block';
   document.getElementById('overlayErr').textContent = msg;
   document.getElementById('btnAudit').disabled = false;
