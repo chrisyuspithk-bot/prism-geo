@@ -287,8 +287,11 @@ def share_of_voice(request: Request):
 def citations(request: Request):
     tenant = _tenant(request)
     days, model_id = _filters(request)
+    domain_page = max(1, int(request.query_params.get("dp", "1")))
+    url_page = max(1, int(request.query_params.get("up", "1")))
     with connect() as conn:
-        data = queries.citations_page(conn, tenant["id"], days, model_id)
+        data = queries.citations_page(conn, tenant["id"], days, model_id,
+                                      domain_page=domain_page, url_page=url_page)
     return templates.TemplateResponse(
         request, "citations.html", context=ctx(request, page="citations", data=data, days=days))
 

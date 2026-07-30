@@ -51,6 +51,13 @@
         {% endfor %}
       </tbody>
     </table>
+    {% if data.domain_pages > 1 %}
+    <div class="flex items-center justify-between border-t border-slate-100 px-5 py-2 text-xs text-slate-500">
+      {% if data.domain_page > 1 %}<a href="?dp={{ data.domain_page - 1 }}&up={{ data.url_page }}" class="hover:text-indigo-600">{{ t('prev') }}</a>{% else %}<span class="text-slate-300">{{ t('prev') }}</span>{% endif %}
+      <span>{{ t("page_of", page=data.domain_page, total=data.domain_pages) }}</span>
+      {% if data.domain_page < data.domain_pages %}<a href="?dp={{ data.domain_page + 1 }}&up={{ data.url_page }}" class="hover:text-indigo-600">{{ t('next') }}</a>{% else %}<span class="text-slate-300">{{ t('next') }}</span>{% endif %}
+    </div>
+    {% endif %}
   </div>
   <div class="rounded-xl border border-slate-200 bg-white">
     <h2 class="border-b border-slate-100 px-5 py-4 font-semibold">{{ t('top_cited_pages') }}</h2>
@@ -64,6 +71,13 @@
         {% endfor %}
       </tbody>
     </table>
+    {% if data.url_pages > 1 %}
+    <div class="flex items-center justify-between border-t border-slate-100 px-5 py-2 text-xs text-slate-500">
+      {% if data.url_page > 1 %}<a href="?dp={{ data.domain_page }}&up={{ data.url_page - 1 }}" class="hover:text-indigo-600">{{ t('prev') }}</a>{% else %}<span class="text-slate-300">{{ t('prev') }}</span>{% endif %}
+      <span>{{ t("page_of", page=data.url_page, total=data.url_pages) }}</span>
+      {% if data.url_page < data.url_pages %}<a href="?dp={{ data.domain_page }}&up={{ data.url_page + 1 }}" class="hover:text-indigo-600">{{ t('next') }}</a>{% else %}<span class="text-slate-300">{{ t('next') }}</span>{% endif %}
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

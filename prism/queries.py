@@ -185,26 +185,49 @@ def share_of_voice_page(conn, tenant_id: int, days: int = 30, model_id: int | No
     return {"table": table, "trend": trend, "days": days_sorted}
 
 
-def citations_page(conn, tenant_id: int, days: int = 30, model_id: int | None = None) -> dict:
+def citations_page(conn, tenant_id: int, days: int = 30, model_id: int | None = None,
+                   domain_page: int = 1, url_page: int = 1) -> dict:
+    PER = 10
     mf, mp = _model_filter(model_id)
     window = f"-{days} days"
+
+    d_total = q1(conn,
+        f"""SELECT COUNT(*) AS n FROM (
+              SELECT c.domain FROM citations c JOIN runs r ON r.id = c.run_id
+              WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
+              GROUP BY c.domain
+            )""",
+        (tenant_id, window, *mp))["n"]
+    d_off = max(0, (domain_page - 1) * PER)
     top_domains = q(
         conn,
         f"""SELECT c.domain, c.category, COUNT(*) AS n,
                    COUNT(DISTINCT c.url) AS urls
             FROM citations c JOIN runs r ON r.id = c.run_id
             WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
-            GROUP BY c.domain ORDER BY n DESC LIMIT 25""",
-        (tenant_id, window, *mp),
+            GROUP BY c.domain ORDER BY n DESC LIMIT ? OFFSET ?""",
+        (tenant_id, window, *mp, PER, d_off),
     )
+    d_pages = max(1, (d_total + PER - 1) // PER)
+
+    u_total = q1(conn,
+        f"""SELECT COUNT(*) AS n FROM (
+              SELECT c.url FROM citations c JOIN runs r ON r.id = c.run_id
+              WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
+              GROUP BY c.url
+            )""",
+        (tenant_id, window, *mp))["n"]
+    u_off = max(0, (url_page - 1) * PER)
     top_urls = q(
         conn,
         f"""SELECT c.url, c.domain, COUNT(*) AS n
             FROM citations c JOIN runs r ON r.id = c.run_id
             WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
-            GROUP BY c.url ORDER BY n DESC LIMIT 25""",
-        (tenant_id, window, *mp),
+            GROUP BY c.url ORDER BY n DESC LIMIT ? OFFSET ?""",
+        (tenant_id, window, *mp, PER, u_off),
     )
+    u_pages = max(1, (u_total + PER - 1) // PER)
+
     by_cat = q(
         conn,
         f"""SELECT c.category, COUNT(*) AS n
@@ -227,6 +250,8 @@ def citations_page(conn, tenant_id: int, days: int = 30, model_id: int | None = 
         "by_category": _dicts(by_cat),
         "stability": stats.stability_score(daily),
         "total": sum(r["n"] for r in by_cat),
+        "domain_page": domain_page, "domain_pages": d_pages, "domain_total": d_total,
+        "url_page": url_page, "url_pages": u_pages, "url_total": u_total,
     }
 
 
