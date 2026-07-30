@@ -23,23 +23,23 @@ and visibility metrics from the provided data.
 
 Return your analysis as a JSON object with these keys:
 - "executive_summary": 2-3 paragraph overall assessment
-- "content_audit": {
-    "page_inventory": [{ "url": "...", "title": "...", "category": "product|about|blog|service|landing|other", "quality": "good|medium|thin", "note": "1-line assessment" }],
-    "fact_density": { "pct": 0-100, "assessment": "1 paragraph about verifiable facts vs fluff" },
-    "missing_content": [{ "type": "FAQ|case_studies|comparison_guides|testimonials|pricing|tech_specs|white_papers|schema", "severity": "high|medium|low", "note": "why it matters" }],
-    "brand_consistency": { "ok": true/false, "issues": ["list of inconsistencies found"] },
-    "freshness": { "ok": true/false, "issues": ["outdated copyright", "stale blog", "no dates", etc.] }
-  },
-- "scoring": {
-    "intent_match": { "score": 0-100, "note": "1 sentence" },
-    "citeability": { "score": 0-100, "note": "1 sentence" },
-    "authority": { "score": 0-100, "note": "1 sentence" },
-    "technical": { "score": 0-100, "note": "1 sentence" },
-    "trust": { "score": 0-100, "note": "1 sentence" }
-  },
+- "content_audit": {{
+    "page_inventory": [{{ "url": "...", "title": "...", "category": "product|about|blog|service|landing|other", "quality": "good|medium|thin", "note": "1-line assessment" }}],
+    "fact_density": {{ "pct": 0-100, "assessment": "1 paragraph about verifiable facts vs fluff" }},
+    "missing_content": [{{ "type": "FAQ|case_studies|comparison_guides|testimonials|pricing|tech_specs|white_papers|schema", "severity": "high|medium|low", "note": "why it matters" }}],
+    "brand_consistency": {{ "ok": true/false, "issues": ["list of inconsistencies found"] }},
+    "freshness": {{ "ok": true/false, "issues": ["outdated copyright", "stale blog", "no dates", etc.] }}
+  }},
+- "scoring": {{
+    "intent_match": {{ "score": 0-100, "note": "1 sentence" }},
+    "citeability": {{ "score": 0-100, "note": "1 sentence" }},
+    "authority": {{ "score": 0-100, "note": "1 sentence" }},
+    "technical": {{ "score": 0-100, "note": "1 sentence" }},
+    "trust": {{ "score": 0-100, "note": "1 sentence" }}
+  }},
 - "competitor_insights": "1-2 paragraph analysis of competitor positioning vs the brand",
-- "recommendations": [{ "priority": "immediate|short_term|long_term", "action": "specific 1-sentence action item", "effort": "low|medium|high", "impact": "high|medium|low" }]
-}"""
+- "recommendations": [{{ "priority": "immediate|short_term|long_term", "action": "specific 1-sentence action item", "effort": "low|medium|high", "impact": "high|medium|low" }}]
+}}"""
 
 _LANG_INSTRUCTIONS = {
     "zh-TW": "IMPORTANT: You MUST write ALL text values in Traditional Chinese (繁體中文). "
