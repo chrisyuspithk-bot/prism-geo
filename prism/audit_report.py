@@ -439,52 +439,117 @@ def _build_page_diagnostics(pages: list[dict]) -> str:
     # Build the diagnostic text
     parts = []
 
+    # ── Page-level statistics ──
+    total = len(pages)
+    good = total - len(thin_pages)
+    parts.append(
+        f"### Page Statistics\n"
+        f"Total pages crawled: {total}\n"
+        f"Pages with adequate content (≥{_THIN_THRESHOLD} chars): {good}\n"
+        f"Thin pages (<{_THIN_THRESHOLD} chars): {len(thin_pages)} "
+        f"({'—'.join(str(p['content_len']) for p in thin_pages[:5])}"
+        + (f", ..." if len(thin_pages) > 5 else "") + " chars)\n"
+    )
+
+    if high_value_thin:
+        parts.append(
+            f"⚠ High-value thin pages (case studies, client names, flagship projects): "
+            f"{len(high_value_thin)} — these are the most damaging to AI visibility "
+            f"because AI engines expect rich content on client/project pages."
+        )
+
+    if mismatches:
+        parts.append(
+            f"⚠ Title-content mismatches detected: {len(mismatches)} — "
+            f"these confuse AI crawlers by sending conflicting topic signals."
+        )
+    parts.append("")
+
     # ── Thin pages ──
     if thin_pages:
-        parts.append(f"### Thin Pages (content < {_THIN_THRESHOLD} chars) — {len(thin_pages)} found")
+        parts.append(
+            f"### Thin Pages (< {_THIN_THRESHOLD} chars) — {len(thin_pages)} found\n"
+            f"AI engines ignore pages with little body text. Each thin page is a "
+            f"missed opportunity to rank for its topic."
+        )
         for p in thin_pages[:20]:
-            stub = " [STUB: title-only, no body]" if p["heading_only"] else ""
-            parts.append(
-                f"- **{p['url']}** ({p['content_len']} chars){stub}\n"
-                f"  Title: {p['title'][:100]}"
+            headings = (p.get("headings") or "").strip()
+            content_snip = (p.get("content") or "").strip()[:120]
+            stub = " [STUB: title-only, no body text]" if p["heading_only"] else ""
+
+            entry = (
+                f"- **{p['url']}** — {p['content_len']} chars{stub}\n"
+                f"  Title: {p['title'][:100]}\n"
             )
+            if headings:
+                entry += f"  Headings: {headings[:150]}\n"
+            if content_snip and not p["heading_only"]:
+                entry += f"  Existing content: \"{content_snip}\"\n"
+            parts.append(entry)
         if len(thin_pages) > 20:
-            parts.append(f"  ... and {len(thin_pages) - 20} more thin pages.")
+            parts.append(f"  ... and {len(thin_pages) - 20} more thin pages (omitted for brevity).")
         parts.append("")
 
-    # ── High-value thin pages (priority flag) ──
+    # ── High-value thin pages ──
     if high_value_thin:
-        parts.append("### ⚠ HIGH SEVERITY — Thin pages on high-value URLs (case studies, clients, flagship projects)")
+        parts.append(
+            "### ⚠ CRITICAL — Empty/Thin Case Study & Client Pages\n"
+            "These URLs suggest major client projects or flagship deployments. "
+            "AI answer engines heavily weight case studies when recommending vendors. "
+            "Empty pages here directly cost you citations against competitors like "
+            "Chubb and Guardforce who publish detailed project write-ups."
+        )
         for p in high_value_thin:
-            stub = " [EMPTY BODY — title only, zero content]" if p["heading_only"] else ""
-            parts.append(
-                f"- **{p['url']}** ({p['content_len']} chars){stub}\n"
-                f"  Title: {p['title'][:100]}"
+            headings = (p.get("headings") or "").strip()
+            content_snip = (p.get("content") or "").strip()
+            stub = " [EMPTY: zero body content — AI sees nothing]" if p["heading_only"] else ""
+
+            entry = (
+                f"- **{p['url']}** — {p['content_len']} chars{stub}\n"
+                f"  Title: {p['title'][:100]}\n"
             )
+            if headings:
+                entry += f"  Headings present: {headings[:150]}\n"
+            if content_snip and not p["heading_only"]:
+                entry += f"  Only content: \"{content_snip[:120]}\"\n"
+            entry += (
+                f"  Impact: AI engines cannot cite this page as evidence of "
+                f"your work with this client. This is a direct citation loss."
+            )
+            parts.append(entry)
         parts.append("")
 
     # ── Title-content mismatches ──
     if mismatches:
-        parts.append("### ⚠ HIGH SEVERITY — Title vs Content Mismatches")
+        parts.append(
+            "### ⚠ CRITICAL — Title vs Content Mismatches\n"
+            "When a page title promises one topic but the body delivers another, "
+            "AI crawlers cannot confidently classify the page. This dilutes "
+            "your authority for both the titled topic AND the actual topic."
+        )
         for m in mismatches:
             parts.append(
                 f"- **{m['url']}**\n"
-                f"  Title says: \"{m['title'][:100]}\"\n"
-                f"  Content appears to be about: \"{m['content_preview']}\"\n"
-                f"  Expected topic: {m['label']}"
+                f"  Title promises: \"{m['title'][:100]}\"\n"
+                f"  Body is actually about: \"{m['content_preview']}\"\n"
+                f"  Expected topic based on title: {m['label']}\n"
+                f"  Fix: Either rewrite the body to match the {m['label']} title, "
+                f"or rename the page to match its actual content."
             )
         parts.append("")
 
     # ── Schema recommendation ──
-    parts.append("### Schema / Structured Data Gap")
     parts.append(
+        "### Schema / Structured Data Gap\n"
         "No JSON-LD Schema markup detected on any crawled page. "
-        "This means answer engines cannot extract structured entity data "
-        "(organization name, address, services, FAQ). "
-        "RECOMMENDATION: Add JSON-LD Organization + LocalBusiness schema "
-        "on the homepage and all core service pages. Also add FAQPage schema "
-        "on service detail pages. This is low-effort, high-impact — "
-        "a single <script type=\"application/ld+json\"> block per page."
+        "Answer engines use Schema to extract structured facts (organization name, "
+        "address, services, FAQs) for direct answers and entity cards.\n"
+        "RECOMMENDATION (This week, low effort, high impact):\n"
+        "- Add JSON-LD Organization + LocalBusiness schema to the homepage.\n"
+        "- Add FAQPage schema on service detail pages targeting common queries.\n"
+        "- Add TechArticle schema on product pages (CCTV, EDR, backup solutions).\n"
+        "Implementation: a single <script type=\"application/ld+json\"> block per page.\n"
+        "No crawling changes needed — structured data lives in the page source."
     )
     parts.append("")
 
