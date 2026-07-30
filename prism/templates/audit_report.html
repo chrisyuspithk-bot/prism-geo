@@ -186,13 +186,15 @@
 </table>
 {% endif %}
 
-{% if analysis.content_audit.fact_density %}
+{% if analysis.content_audit.fact_density and analysis.content_audit.fact_density.pct is defined %}
 <h3>3.2 {{ tr('fact_density') }}</h3>
 <div style="display:flex;align-items:center;gap:10pt;margin-bottom:8pt;">
   <div style="font-size:18pt;font-weight:700;color:{{ '#16a34a' if analysis.content_audit.fact_density.pct >= 40 else ('#d97706' if analysis.content_audit.fact_density.pct >= 15 else '#dc2626') }}">{{ analysis.content_audit.fact_density.pct }}%</div>
   <div style="font-size:8pt;color:#64748b;">{{ tr('fact_density_label') }}</div>
 </div>
+{% if analysis.content_audit.fact_density.assessment %}
 <p class="prose" style="font-size:8.5pt;color:#475569;">{{ analysis.content_audit.fact_density.assessment }}</p>
+{% endif %}
 {% endif %}
 
 {% if analysis.content_audit.missing_content %}
