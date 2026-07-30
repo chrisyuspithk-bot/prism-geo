@@ -355,6 +355,142 @@ def _build_content_summary(pages: list[dict], max_per_site: int = 30) -> str:
     return "\n---\n".join(lines)
 
 
+# ── Page diagnostics (pre-computed before LLM prompt) ──────────────────────
+
+# Content length threshold (chars) below which a page is flagged as thin
+_THIN_THRESHOLD = 200
+
+# Keywords that suggest a page is high-value (case study, client work, portfolio)
+_HIGH_VALUE_KEYWORDS = [
+    "dior", "hospital", "醫院", "science", "park", "science park", "科學園",
+    "case", "案例", "project", "工程", "client", "客戶", "portfolio",
+    "旗艦", "限定", "廣華", "café de coral", "大家樂", "ifc",
+]
+
+# Title→content keyword maps for mismatch detection.
+# If title contains a key but content has NONE of the values, flag as mismatch.
+_TITLE_CONTENT_CHECKS = [
+    # (title_keywords, content_keywords, label)
+    (["備份", "backup"], ["備份", "backup", "還原", "restore", "災難", "disaster"], "Backup"),
+    (["終端防禦", "edr", "端點"], ["edr", "endpoint", "端點", "防禦", "antivirus", "malware"], "EDR/Endpoint"),
+    (["網絡防護", "cyber", "網路安全"], ["cyber", "網絡", "網路", "firewall", "防火牆", "hkcert"], "Cybersecurity"),
+    (["閉路電視", "cctv", "監察", " camera"], ["camera", "鏡頭", "cctv", "監控", "ai", "人工智能"], "CCTV/Surveillance"),
+    (["保安系統", "security system"], ["security", "保安", "alarm", "警報", "access", "門禁"], "Security System"),
+    (["審計", "audit"], ["audit", "審計", "檢查", "inspection", "合規", "compliance"], "Audit"),
+]
+
+
+def _build_page_diagnostics(pages: list[dict]) -> str:
+    """Pre-compute page-level issues: thin content, title mismatches, schema gaps.
+
+    Returns a structured text block for injection into the LLM prompt.
+    The LLM uses this to write the Content Diagnosis and Action Roadmap sections.
+    """
+    if not pages:
+        return ""
+
+    thin_pages: list[dict] = []
+    high_value_thin: list[dict] = []
+    mismatches: list[dict] = []
+
+    for p in pages:
+        content = (p.get("content") or "").strip()
+        title = (p.get("title") or "").strip()
+        url = p.get("url", "")
+        content_len = len(content)
+
+        # 1. Thin page detection
+        is_thin = content_len < _THIN_THRESHOLD
+        if is_thin:
+            # Check if it looks like a stub (title-only, or just a heading repeated)
+            heading_only = content_len < 80 and (
+                not content or content[:50] in title or title[:50] in content
+            )
+            thin_pages.append({
+                **p,
+                "content_len": content_len,
+                "heading_only": heading_only,
+            })
+
+        # 2. High-value thin page — thin page whose URL/title suggests importance
+        if is_thin:
+            combined = (url + " " + title).lower()
+            if any(kw in combined for kw in _HIGH_VALUE_KEYWORDS):
+                high_value_thin.append({
+                    **p,
+                    "content_len": content_len,
+                    "heading_only": content_len < 80,
+                })
+
+        # 3. Title-content mismatch
+        if title and content_len >= 50:
+            title_lower = title.lower()
+            content_lower = content.lower()
+            for title_kws, content_kws, label in _TITLE_CONTENT_CHECKS:
+                if any(kw in title_lower for kw in title_kws):
+                    if not any(kw in content_lower for kw in content_kws):
+                        mismatches.append({
+                            "url": url, "title": title,
+                            "label": label,
+                            "content_preview": content[:120],
+                        })
+                    break  # one label per page
+
+    # Build the diagnostic text
+    parts = []
+
+    # ── Thin pages ──
+    if thin_pages:
+        parts.append(f"### Thin Pages (content < {_THIN_THRESHOLD} chars) — {len(thin_pages)} found")
+        for p in thin_pages[:20]:
+            stub = " [STUB: title-only, no body]" if p["heading_only"] else ""
+            parts.append(
+                f"- **{p['url']}** ({p['content_len']} chars){stub}\n"
+                f"  Title: {p['title'][:100]}"
+            )
+        if len(thin_pages) > 20:
+            parts.append(f"  ... and {len(thin_pages) - 20} more thin pages.")
+        parts.append("")
+
+    # ── High-value thin pages (priority flag) ──
+    if high_value_thin:
+        parts.append("### ⚠ HIGH SEVERITY — Thin pages on high-value URLs (case studies, clients, flagship projects)")
+        for p in high_value_thin:
+            stub = " [EMPTY BODY — title only, zero content]" if p["heading_only"] else ""
+            parts.append(
+                f"- **{p['url']}** ({p['content_len']} chars){stub}\n"
+                f"  Title: {p['title'][:100]}"
+            )
+        parts.append("")
+
+    # ── Title-content mismatches ──
+    if mismatches:
+        parts.append("### ⚠ HIGH SEVERITY — Title vs Content Mismatches")
+        for m in mismatches:
+            parts.append(
+                f"- **{m['url']}**\n"
+                f"  Title says: \"{m['title'][:100]}\"\n"
+                f"  Content appears to be about: \"{m['content_preview']}\"\n"
+                f"  Expected topic: {m['label']}"
+            )
+        parts.append("")
+
+    # ── Schema recommendation ──
+    parts.append("### Schema / Structured Data Gap")
+    parts.append(
+        "No JSON-LD Schema markup detected on any crawled page. "
+        "This means answer engines cannot extract structured entity data "
+        "(organization name, address, services, FAQ). "
+        "RECOMMENDATION: Add JSON-LD Organization + LocalBusiness schema "
+        "on the homepage and all core service pages. Also add FAQPage schema "
+        "on service detail pages. This is low-effort, high-impact — "
+        "a single <script type=\"application/ld+json\"> block per page."
+    )
+    parts.append("")
+
+    return "\n".join(parts)
+
+
 def _call_llm(api_key: str, base_url: str, model: str, prompt: str,
               system: str = "") -> str:
     """Make an LLM call, return text response."""
@@ -475,6 +611,7 @@ def analyze(tenant_id: int, days: int = 30, lang: str = "zh-TW") -> dict:
         all_pages.extend(pages)
 
     content_summary = _build_content_summary(all_pages)
+    diagnostics = _build_page_diagnostics(all_pages)
     vis_summary = _build_vis_summary(data["visibility"], data["competitors"])
 
     system = _AUDIT_SYSTEMS.get(lang, _AUDIT_SYSTEMS["en"])
@@ -486,6 +623,14 @@ Pages crawled: {len(all_pages)}
 
 === CRAWLED WEBSITE CONTENT ===
 {content_summary}
+
+=== PRE-COMPUTED PAGE DIAGNOSTICS ===
+These issues were found by automated analysis. You MUST include them in your report.
+- List the HIGH SEVERITY issues in the Content Diagnosis section with exact URLs.
+- Include the Schema gap as a "This week" action item in the Action Roadmap.
+- Use the thin/mismatch findings to write concrete, URL-specific recommendations.
+
+{diagnostics}
 
 === AI VISIBILITY TRACKING DATA ===
 {vis_summary}"""
