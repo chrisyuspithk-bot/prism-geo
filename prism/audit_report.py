@@ -135,7 +135,7 @@ def _call_llm(api_key: str, base_url: str, model: str, prompt: str) -> str:
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.5,
-            "max_tokens": 4096,
+            "max_tokens": 8192,
         },
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         timeout=120,
@@ -147,10 +147,30 @@ def _call_llm(api_key: str, base_url: str, model: str, prompt: str) -> str:
 def _parse_llm_json(text: str) -> dict:
     """Extract JSON object from LLM response (may have markdown fences)."""
     text = text.strip()
-    m = re.search(r"\{[\s\S]*\}", text)
+    # Try code-fenced JSON first: ```json ... ``` or ``` ... ```
+    m = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", text)
     if m:
         try:
-            return json.loads(m.group())
+            return json.loads(m.group(1))
+        except json.JSONDecodeError:
+            pass
+    # Try bare JSON — find the outermost balanced { } pair
+    start = text.find("{")
+    if start == -1:
+        return {"error": "Failed to parse LLM response", "raw": text[:500]}
+    depth = 0
+    end = -1
+    for i, ch in enumerate(text[start:], start):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+    if end > start:
+        try:
+            return json.loads(text[start:end])
         except json.JSONDecodeError:
             pass
     return {"error": "Failed to parse LLM response", "raw": text[:500]}
@@ -211,8 +231,11 @@ freshness signals, five-dimension scoring, competitor insights, and recommendati
     try:
         llm_response = _call_llm(api_key, base_url, model, prompt)
         analysis = _parse_llm_json(llm_response)
+        if analysis.get("error"):
+            print(f"[audit] LLM parse failed: {llm_response[:300]}", flush=True)
         data["analysis"] = analysis
     except Exception as e:
+        print(f"[audit] LLM call failed: {e}", flush=True)
         data["analysis"] = {"error": str(e)}
 
     return data
