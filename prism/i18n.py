@@ -352,6 +352,9 @@ STRINGS = {
     "audit_section_roadmap": {"zh-TW": "優化路線圖", "en": "Optimization Roadmap"},
     "audit_section_roadmap_desc": {"zh-TW": "即時/短期/長期建議，附努力與影響評估", "en": "Immediate/short-term/long-term recommendations with effort/impact"},
     "audit_generation_note": {"zh-TW": "生成需時約 30-60 秒，系統將在背景分析網站內容後提供 PDF 下載。", "en": "Generation takes ~30-60 seconds. The system analyzes website content in the background then provides PDF download."},
+    "geo_audit_report_ready": {"zh-TW": "結合 Content Studio 網站內容與 AI 可見度數據，生成含內容審計、評分及路線圖的專業 PDF。", "en": "Combines Content Studio website content with AI visibility data into a professional PDF with content audit, scoring, and roadmap."},
+    "geo_audit_report_no_sites": {"zh-TW": "需先爬取網站內容才能生成完整審計報告。", "en": "A crawled website is needed to generate the full audit report."},
+    "report_quick_desc": {"zh-TW": "純數據 Markdown 報告（可見度、聲量、引用、引擎分佈）。", "en": "Data-only Markdown report (visibility, share of voice, citations, engines)."},
 }
 
 
