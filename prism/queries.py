@@ -286,7 +286,7 @@ def prompt_detail(conn, prompt_id: int, days: int = 30,
         conn,
         """SELECT r.*, m.name AS model_name FROM runs r
            JOIN models m ON m.id = r.model_id
-           WHERE r.prompt_id = ? ORDER BY r.ran_at DESC LIMIT ? OFFSET ?""",
+           WHERE r.prompt_id = ? ORDER BY r.job_id DESC, r.ran_at DESC LIMIT ? OFFSET ?""",
         (prompt_id, RUNS_PER, runs_offset),
     )
     runs_pages = max(1, (runs_total + RUNS_PER - 1) // RUNS_PER)

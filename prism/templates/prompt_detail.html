@@ -69,18 +69,28 @@
 
 <h2 class="mb-3 mt-8 font-semibold">{{ t('response_log') }}</h2>
 {% if data.runs %}
-<div class="space-y-4">
-  {% for r in data.runs %}
-  <details id="run-{{ r.id }}" class="rounded-xl border border-slate-200 bg-white">
-    <summary class="cursor-pointer px-5 py-3 text-sm text-slate-500 hover:text-slate-700">
-      <span class="font-medium text-slate-700">{{ r.model_name }}</span> · {{ r.ran_at }} ·
-      {% if r.status == 'ok' %}<span class="text-emerald-600">ok</span>{% else %}<span class="text-rose-500">error</span>{% endif %}
-    </summary>
-    {% if r.error %}<pre class="whitespace-pre-wrap border-t border-rose-100 bg-rose-50 px-5 py-3 text-sm leading-relaxed text-rose-700">{{ r.error }}</pre>{% endif %}
-    <pre class="whitespace-pre-wrap border-t {{ 'border-rose-100' if r.error else 'border-slate-100' }} px-5 py-4 text-sm leading-relaxed text-slate-700">{{ r.response_text }}</pre>
-  </details>
-  {% endfor %}
+{% for batch_id, batch_runs in data.runs | groupby('job_id') %}
+{% set batch_time = batch_runs[0].ran_at[:16] %}
+<div class="mb-5">
+  <div class="mb-2 flex items-center gap-2 text-xs font-medium text-slate-400 uppercase tracking-wide">
+    <span class="inline-block h-2 w-2 rounded-full bg-indigo-400"></span>
+    {{ batch_time }}
+    <span class="font-normal normal-case tracking-normal text-slate-300">· {{ batch_runs | length }} {{ t('engine') | lower }}(s)</span>
+  </div>
+  <div class="space-y-2">
+    {% for r in batch_runs %}
+    <details id="run-{{ r.id }}" class="rounded-xl border border-slate-200 bg-white">
+      <summary class="cursor-pointer px-5 py-3 text-sm text-slate-500 hover:text-slate-700">
+        <span class="font-medium text-slate-700">{{ r.model_name }}</span> · {{ r.ran_at }} ·
+        {% if r.status == 'ok' %}<span class="text-emerald-600">ok</span>{% else %}<span class="text-rose-500">error</span>{% endif %}
+      </summary>
+      {% if r.error %}<pre class="whitespace-pre-wrap border-t border-rose-100 bg-rose-50 px-5 py-3 text-sm leading-relaxed text-rose-700">{{ r.error }}</pre>{% endif %}
+      <pre class="whitespace-pre-wrap border-t {{ 'border-rose-100' if r.error else 'border-slate-100' }} px-5 py-4 text-sm leading-relaxed text-slate-700">{{ r.response_text }}</pre>
+    </details>
+    {% endfor %}
+  </div>
 </div>
+{% endfor %}
 {% if data.runs_pages > 1 %}
 <div class="mt-4 flex items-center justify-between text-xs text-slate-500">
   {% if data.runs_page > 1 %}<a href="{{ page_url(data.citations_page, data.runs_page - 1) }}" class="hover:text-indigo-600">{{ t('prev') }}</a>{% else %}<span class="text-slate-300">{{ t('prev') }}</span>{% endif %}
