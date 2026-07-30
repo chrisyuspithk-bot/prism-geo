@@ -24,7 +24,8 @@ def overview(conn, tenant_id: int, days: int = 30, model_id: int | None = None) 
     if own is None:
         last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ?", (tenant_id,))
         return {"brand": None, "prompts": 0, "runs": 0, "citations": 0,
-                "visibility": 0.0, "last_run": last["t"] if last else None}
+                "visibility": 0.0, "last_run": last["t"] if last else None,
+                "runs_by_engine": []}
     totals = q1(
         conn,
         f"""SELECT COUNT(*) AS runs, COUNT(DISTINCT r.prompt_id) AS prompts
@@ -47,6 +48,14 @@ def overview(conn, tenant_id: int, days: int = 30, model_id: int | None = None) 
         (own["id"], tenant_id, f"-{days} days", *mp),
     )
     last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ?", (tenant_id,))
+    runs_by_engine = q(
+        conn,
+        f"""SELECT m.name, COUNT(*) AS n
+            FROM runs r JOIN models m ON m.id = r.model_id
+            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
+            GROUP BY m.name ORDER BY n DESC""",
+        (tenant_id, f"-{days} days", *mp),
+    )
     return {
         "brand": dict(own),
         "prompts": totals["prompts"] or 0,
@@ -54,6 +63,7 @@ def overview(conn, tenant_id: int, days: int = 30, model_id: int | None = None) 
         "citations": cited["n"] or 0,
         "visibility": stats.overall_visibility(vis["total"] or 0, vis["mentioned"] or 0),
         "last_run": last["t"],
+        "runs_by_engine": _dicts(runs_by_engine),
     }
 
 
