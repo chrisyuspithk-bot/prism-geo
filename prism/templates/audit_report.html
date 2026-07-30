@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<title>GEO Audit — {{ brand.name }}</title>
+<style>
+  @page { size: A4; margin: 2cm 1.8cm; @bottom-center { content: "Page " counter(page); font-size: 7.5pt; color: #94a3b8; } }
+  body { font-family: 'WenQuanYi Micro Hei', 'Noto Sans CJK SC', 'Noto Sans CJK TC', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #1e293b; line-height: 1.55; }
+  h1 { font-size: 18pt; font-weight: 700; margin: 0 0 2pt; color: #0f172a; }
+  h2 { font-size: 12pt; font-weight: 600; border-bottom: 1.5pt solid #e2e8f0; padding-bottom: 4pt; margin: 22pt 0 10pt; color: #1e293b; page-break-after: avoid; }
+  h3 { font-size: 10pt; font-weight: 600; margin: 14pt 0 6pt; color: #334155; page-break-after: avoid; }
+  .subtitle { color: #64748b; font-size: 8.5pt; margin-bottom: 20pt; }
+  .cover { text-align: center; padding-top: 120pt; page-break-after: always; }
+  .cover h1 { font-size: 24pt; }
+  .cover .logo { font-size: 10pt; color: #6366f1; font-weight: 600; letter-spacing: 1pt; margin-bottom: 30pt; }
+  .methodology { background: #fefce8; border: 1pt solid #fde68a; border-radius: 6pt; padding: 10pt 12pt; margin-bottom: 18pt; font-size: 8.5pt; color: #92400e; page-break-inside: avoid; }
+  .methodology strong { color: #78350f; }
+
+  .kpi-row { display: flex; gap: 12pt; margin-bottom: 18pt; page-break-inside: avoid; }
+  .kpi { flex: 1; border: 1pt solid #e2e8f0; border-radius: 8pt; padding: 10pt 12pt; text-align: center; }
+  .kpi-label { font-size: 7.5pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.5pt; }
+  .kpi-value { font-size: 20pt; font-weight: 700; }
+  .kpi-value.green { color: #16a34a; }
+  .kpi-value.amber { color: #d97706; }
+  .kpi-value.red { color: #dc2626; }
+  .kpi-value.indigo { color: #4f46e5; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 10pt; page-break-inside: avoid; }
+  th { text-align: left; padding: 5pt 7pt; border-bottom: 2pt solid #e2e8f0; color: #64748b; font-weight: 600; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.3pt; }
+  td { padding: 4pt 7pt; border-bottom: 1pt solid #f1f5f9; }
+  tr:last-child td { border-bottom: none; }
+
+  .score-card { display: inline-block; width: 30%; vertical-align: top; padding: 8pt 10pt; margin: 0 1.5% 8pt 0; border: 1pt solid #e2e8f0; border-radius: 6pt; page-break-inside: avoid; }
+  .score-bar { height: 6pt; border-radius: 3pt; margin: 4pt 0; background: #f1f5f9; }
+  .score-bar-fill { height: 6pt; border-radius: 3pt; }
+  .score-bar-fill.green { background: #16a34a; }
+  .score-bar-fill.amber { background: #d97706; }
+  .score-bar-fill.red { background: #dc2626; }
+
+  .tag { display: inline-block; background: #f1f5f9; border-radius: 3pt; padding: 1pt 5pt; font-size: 7.5pt; color: #64748b; }
+  .badge { display: inline-block; border-radius: 10pt; padding: 1pt 7pt; font-size: 7.5pt; margin-right: 3pt; }
+  .badge.red { background: #fef2f2; color: #dc2626; }
+  .badge.amber { background: #fffbeb; color: #d97706; }
+  .badge.green { background: #f0fdf4; color: #16a34a; }
+  .badge.high { background: #fef2f2; color: #dc2626; }
+  .badge.medium { background: #fffbeb; color: #d97706; }
+  .badge.low { background: #f1f5f9; color: #64748b; }
+
+  .rec-card { border: 1pt solid #e2e8f0; border-radius: 6pt; padding: 8pt 10pt; margin-bottom: 6pt; page-break-inside: avoid; }
+  .rec-card.immediate { border-left: 3pt solid #dc2626; }
+  .rec-card.short_term { border-left: 3pt solid #d97706; }
+  .rec-card.long_term { border-left: 3pt solid #6366f1; }
+
+  .page-break { page-break-before: always; }
+
+  .footer { margin-top: 24pt; border-top: 1pt solid #e2e8f0; padding-top: 8pt; font-size: 7pt; color: #94a3b8; text-align: center; }
+  .prose { white-space: pre-line; }
+  .check-cross { font-size: 10pt; }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="logo">PRISM GEO</div>
+  <h1>{{ brand.name }}</h1>
+  <p style="font-size: 14pt; color: #4f46e5; margin: 6pt 0;">GEO (Generative Engine Optimization) 網站審計報告</p>
+  <p class="subtitle">
+    審計日期：{{ generated_at }}<br>
+    審計範圍：{{ tenant.website or brand.name }} · 全站爬取 + AI 可見度追蹤數據<br>
+    分析引擎：{{ (visibility.engines or [])|map(attribute='name')|join(', ') or 'N/A' }}
+  </p>
+</div>
+
+<!-- METHODOLOGY NOTE -->
+<div class="methodology">
+  <strong>⚙ 方法論說明</strong><br>
+  本報告基於 prism 對 {{ tenant.website or brand.name }} 的網站爬取內容（Content Studio）及 AI 答案引擎可見度追蹤數據自動生成。
+  網站內容分析通過 LLM 對已爬取頁面進行結構化審計；Schema 檢測依賴於文字內容解析，未經 HTML 原始碼掃描驗證。
+  可見度數據來自 prism 對多個答案引擎（ChatGPT、Claude、Gemini 等）的持續追蹤。
+</div>
+
+{% if analysis.error %}
+<div class="methodology" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;">
+  <strong>⚠ LLM 分析未能完成：</strong> {{ analysis.error }}
+  {% if no_llm %}
+  <br>請在「設定 → 引擎金鑰」中設定 API 金鑰後重新生成報告。
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- KPI ROW -->
+<h2>1. 總覽</h2>
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-label">品牌可見度</div>
+    <div class="kpi-value {{ 'green' if visibility.visibility|default(0) >= 60 else ('amber' if visibility.visibility|default(0) >= 25 else 'red') }}">{{ "%.0f"|format(visibility.visibility|default(0)) }}%</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">追蹤提問</div>
+    <div class="kpi-value indigo">{{ visibility.prompts_count|default(0) }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">總評估數</div>
+    <div class="kpi-value indigo">{{ visibility.runs|default(0) }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">引用來源數</div>
+    <div class="kpi-value indigo">{{ visibility.citations|default(0) }}</div>
+  </div>
+</div>
+
+{% if analysis.executive_summary %}
+<h3>執行摘要</h3>
+<p class="prose" style="font-size:9pt;color:#475569;">{{ analysis.executive_summary }}</p>
+{% endif %}
+
+<!-- AI VISIBILITY BASELINE -->
+<h2>2. AI 搜尋可見度基線</h2>
+
+{% if visibility.prompt_rows %}
+<table>
+  <tr><th>提問</th><th>標籤</th><th>評估次數</th><th>可見度</th></tr>
+  {% for p in visibility.prompt_rows %}
+  <tr>
+    <td>{{ p.text[:80] }}</td>
+    <td><span class="tag">{{ p.tags or '' }}</span></td>
+    <td>{{ p.runs }}</td>
+    <td><strong>{{ "%.0f"|format(p.visibility) }}%</strong></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p style="color:#94a3b8;font-size:8.5pt;">尚無追蹤數據。</p>
+{% endif %}
+
+{% if visibility.sov %}
+<h3>聲量佔比</h3>
+<table>
+  <tr><th>品牌</th><th>提及次數</th><th>佔比</th><th>平均排名</th></tr>
+  {% for s in visibility.sov[:10] %}
+  {% set share = (s.mentions / visibility.total_mentions * 100) if visibility.total_mentions else 0 %}
+  <tr>
+    <td><strong>{{ s.name }}</strong>{% if s.name == brand.name %} <span style="color:#4f46e5;font-size:7.5pt;">(您)</span>{% endif %}</td>
+    <td>{{ s.mentions }}</td>
+    <td>{{ "%.0f"|format(share) }}%</td>
+    <td>{{ "%.1f"|format(s.avg_pos) if s.avg_pos else '—' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if visibility.gaps %}
+<h3>成長機會</h3>
+<p style="font-size:8.5pt;color:#64748b;">競爭者出現但 {{ brand.name }} 未出現的提問：</p>
+{% for g in visibility.gaps %}
+<div style="margin-bottom:4pt;font-size:8.5pt;">
+  <strong>「{{ g.text[:80] }}」</strong> — 出現的競爭者：{{ g.competitors }}
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- CONTENT AUDIT (LLM) -->
+{% if analysis.content_audit %}
+<div class="page-break"></div>
+<h2>3. 網站內容審計</h2>
+<p style="font-size:8.5pt;color:#64748b;margin-bottom:10pt;">
+  基於 Content Studio 爬取的 {{ (pages_by_site.values()|list)|map('length')|sum }} 個頁面進行分析。
+</p>
+
+{% if analysis.content_audit.page_inventory %}
+<h3>3.1 頁面清單與分類</h3>
+<table>
+  <tr><th>URL</th><th>標題</th><th>分類</th><th>質量</th><th>評估</th></tr>
+  {% for p in analysis.content_audit.page_inventory[:25] %}
+  <tr>
+    <td style="max-width:140pt;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ p.url }}</td>
+    <td>{{ p.title[:50] if p.title else '—' }}</td>
+    <td><span class="tag">{{ p.category }}</span></td>
+    <td>
+      {% if p.quality == 'good' %}<span class="badge green">良好</span>
+      {% elif p.quality == 'thin' %}<span class="badge red">薄弱</span>
+      {% else %}<span class="badge amber">中等</span>{% endif %}
+    </td>
+    <td style="font-size:7.5pt;color:#64748b;">{{ p.note[:80] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if analysis.content_audit.fact_density %}
+<h3>3.2 事實密度分析</h3>
+<div style="display:flex;align-items:center;gap:10pt;margin-bottom:8pt;">
+  <div style="font-size:18pt;font-weight:700;color:{{ '#16a34a' if analysis.content_audit.fact_density.pct >= 40 else ('#d97706' if analysis.content_audit.fact_density.pct >= 15 else '#dc2626') }}">{{ analysis.content_audit.fact_density.pct }}%</div>
+  <div style="font-size:8pt;color:#64748b;">可驗證事實佔比<br>（排除營銷宣傳語）</div>
+</div>
+<p class="prose" style="font-size:8.5pt;color:#475569;">{{ analysis.content_audit.fact_density.assessment }}</p>
+{% endif %}
+
+{% if analysis.content_audit.missing_content %}
+<h3>3.3 缺失的關鍵內容類型</h3>
+<table>
+  <tr><th>內容類型</th><th>影響程度</th><th>說明</th></tr>
+  {% for m in analysis.content_audit.missing_content %}
+  <tr>
+    <td><strong>{{ m.type }}</strong></td>
+    <td>
+      {% if m.severity == 'high' %}<span class="badge red">高</span>
+      {% elif m.severity == 'medium' %}<span class="badge amber">中</span>
+      {% else %}<span class="badge low">低</span>{% endif %}
+    </td>
+    <td style="font-size:7.5pt;color:#64748b;">{{ m.note }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if analysis.content_audit.brand_consistency %}
+<h3>3.4 品牌一致性</h3>
+{% if analysis.content_audit.brand_consistency.ok %}
+<p style="color:#16a34a;font-size:8.5pt;">✓ 品牌名稱在網站內使用一致。</p>
+{% else %}
+<p style="color:#dc2626;font-size:8.5pt;">⚠ 發現品牌名稱不一致：</p>
+<ul style="font-size:8.5pt;color:#475569;">
+  {% for issue in analysis.content_audit.brand_consistency.issues %}
+  <li>{{ issue }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endif %}
+
+{% if analysis.content_audit.freshness %}
+<h3>3.5 時效性信號</h3>
+{% if analysis.content_audit.freshness.ok %}
+<p style="color:#16a34a;font-size:8.5pt;">✓ 網站時效性信號正常。</p>
+{% else %}
+<ul style="font-size:8.5pt;color:#475569;">
+  {% for issue in analysis.content_audit.freshness.issues %}
+  <li>⚠ {{ issue }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endif %}
+{% endif %}
+
+<!-- SCORING (LLM) -->
+{% if analysis.scoring %}
+<div class="page-break"></div>
+<h2>4. 五大指標評分</h2>
+
+{% set dims = [
+  ('intent_match', '搜尋意圖匹配度', 25),
+  ('citeability', '內容可引用度', 25),
+  ('authority', '權威資產儲備', 20),
+  ('technical', '技術 SEO 基礎', 15),
+  ('trust', '信任信號', 15),
+] %}
+{% for key, label, weight in dims %}
+{% if analysis.scoring[key] %}
+<div class="score-card">
+  <div style="font-size:8.5pt;font-weight:600;">{{ label }} <span style="color:#94a3b8;">({{ weight }}%)</span></div>
+  <div style="font-size:16pt;font-weight:700;color:{{ '#16a34a' if analysis.scoring[key].score >= 60 else ('#d97706' if analysis.scoring[key].score >= 30 else '#dc2626') }}">{{ analysis.scoring[key].score }}/100</div>
+  <div class="score-bar"><div class="score-bar-fill {{ 'green' if analysis.scoring[key].score >= 60 else ('amber' if analysis.scoring[key].score >= 30 else 'red') }}" style="width:{{ analysis.scoring[key].score }}%;"></div></div>
+  <div style="font-size:7pt;color:#64748b;margin-top:3pt;">{{ analysis.scoring[key].note }}</div>
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+<!-- COMPETITOR INSIGHTS (LLM) -->
+{% if analysis.competitor_insights %}
+<h2>5. 競爭者分析</h2>
+<p class="prose" style="font-size:9pt;color:#475569;">{{ analysis.competitor_insights }}</p>
+{% endif %}
+
+<!-- CITATIONS -->
+{% if visibility.top_domains %}
+<h2>6. 引用來源分析</h2>
+<h3>熱門引用網域</h3>
+<table>
+  <tr><th>網域</th><th>類別</th><th>引用次數</th></tr>
+  {% for d in visibility.top_domains[:15] %}
+  <tr>
+    <td>{{ d.domain }}</td>
+    <td><span class="tag">{{ d.category }}</span></td>
+    <td>{{ d.n }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% if visibility.top_urls %}
+<h3>熱門引用頁面</h3>
+<table>
+  <tr><th>URL</th><th>網域</th><th>引用次數</th></tr>
+  {% for u in visibility.top_urls[:10] %}
+  <tr>
+    <td style="max-width:180pt;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ u.url }}</td>
+    <td>{{ u.domain }}</td>
+    <td>{{ u.n }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endif %}
+
+<!-- RECOMMENDATIONS (LLM) -->
+{% if analysis.recommendations %}
+<div class="page-break"></div>
+<h2>7. 優化路線圖</h2>
+
+{% for r in analysis.recommendations %}
+<div class="rec-card {{ r.priority|replace('immediate','immediate')|replace('short_term','short_term')|replace('long_term','long_term') }}">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3pt;">
+    <span>
+      {% if r.priority == 'immediate' %}<span class="badge red">即時</span>
+      {% elif r.priority == 'short_term' %}<span class="badge amber">短期</span>
+      {% else %}<span class="badge" style="background:#eef2ff;color:#4f46e5;">長期</span>{% endif %}
+    </span>
+    <span style="font-size:7pt;color:#94a3b8;">
+      努力：<span class="badge {{ r.effort }}">{{ r.effort }}</span>
+      影響：<span class="badge {{ 'high' if r.impact == 'high' else ('medium' if r.impact == 'medium' else 'low') }}">{{ r.impact }}</span>
+    </span>
+  </div>
+  <p style="font-size:8.5pt;margin:0;color:#334155;">{{ r.action }}</p>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- ENGINE DISTRIBUTION -->
+{% if visibility.engines %}
+<h2>8. 引擎分佈</h2>
+<table>
+  <tr><th>引擎</th><th>評估次數</th><th>佔比</th></tr>
+  {% for e in visibility.engines %}
+  {% set share = (e.n / visibility.runs * 100) if visibility.runs else 0 %}
+  <tr>
+    <td>{{ e.name }}</td>
+    <td>{{ e.n }}</td>
+    <td>{{ "%.0f"|format(share) }}%</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<div class="footer">
+  由 prism-geo 自動生成 · {{ generated_at }} · 數據範圍：過去 {{ days }} 天<br>
+  此報告基於 Content Studio 爬取內容與 AI 可見度追蹤數據自動生成，所有評分均為系統評估。
+</div>
+
+</body>
+</html>

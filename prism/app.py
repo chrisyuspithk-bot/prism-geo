@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import i18n, jobs, keystore, queries, report, scheduler, workspace
+from . import audit_report, i18n, jobs, keystore, queries, report, scheduler, workspace
 from . import crawler, chunk, drafts, embeddings, rag
 from .db import connect, init_db, q, q1
 from .onboarding import analyze_website, generate_prompts
@@ -669,9 +669,15 @@ def reports_page(request: Request):
     with connect() as conn:
         own = workspace.own_brand(conn, tenant["id"])
         has_data = own is not None
+        sites = conn.execute(
+            "SELECT * FROM sites WHERE tenant_id = ? AND status = 'ready'",
+            (tenant["id"],),
+        ).fetchall()
+        has_sites = len(sites) > 0
     return templates.TemplateResponse(
         request, "reports.html",
-        context=ctx(request, page="reports", has_data=has_data, brand=own))
+        context=ctx(request, page="reports", has_data=has_data, brand=own,
+                    has_sites=has_sites))
 
 
 @app.get("/reports/download")
@@ -686,6 +692,22 @@ def reports_download(request: Request, days: int = 30):
     filename = f"geo-visibility-{brand_slug}-{days}d.md"
     from fastapi.responses import Response
     return Response(md, media_type="text/markdown; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@app.get("/reports/audit")
+def reports_audit_download(request: Request, days: int = 30):
+    """Generate and download a comprehensive GEO audit report as PDF."""
+    tenant = _tenant(request)
+    pdf_bytes = audit_report.generate_pdf(tenant["id"], days)
+    if pdf_bytes is None:
+        return RedirectResponse("/reports", 303)
+    with connect() as conn:
+        own = workspace.own_brand(conn, tenant["id"])
+    brand_slug = (own["name"] if own else "brand").lower().replace(" ", "-")
+    filename = f"geo-audit-{brand_slug}-{days}d.pdf"
+    from fastapi.responses import Response
+    return Response(pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
