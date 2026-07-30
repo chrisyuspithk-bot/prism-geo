@@ -13,6 +13,33 @@
   .methodology { background: #fefce8; border: 1pt solid #fde68a; border-radius: 6pt; padding: 10pt 12pt; margin-bottom: 18pt; font-size: 8.5pt; color: #92400e; page-break-inside: avoid; }
   .methodology strong { color: #78350f; }
 
+  /* KPI cards */
+  .kpi-row { display: flex; gap: 10pt; margin-bottom: 16pt; page-break-inside: avoid; }
+  .kpi-card { flex: 1; background: #f8fafc; border: 1pt solid #e2e8f0; border-radius: 6pt; padding: 10pt; text-align: center; }
+  .kpi-val { font-size: 20pt; font-weight: 700; color: #4f46e5; }
+  .kpi-val.green { color: #16a34a; }
+  .kpi-val.amber { color: #d97706; }
+  .kpi-val.red { color: #dc2626; }
+  .kpi-val.indigo { color: #4f46e5; }
+  .kpi-lbl { font-size: 7.5pt; color: #64748b; margin-top: 2pt; }
+
+  /* Charts section */
+  .charts-section { page-break-inside: avoid; margin-bottom: 18pt; }
+  .charts-section h2 { font-size: 12pt; font-weight: 600; border-bottom: 1.5pt solid #e2e8f0; padding-bottom: 4pt; margin: 0 0 10pt; color: #1e293b; }
+  .chart-row { display: flex; gap: 12pt; align-items: flex-start; }
+  .chart-half { flex: 1; }
+  .chart-half h4 { font-size: 9pt; font-weight: 600; margin: 0 0 4pt; color: #475569; }
+  .chart-half table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+  .chart-half th { text-align: left; padding: 3pt 4pt; border-bottom: 1.5pt solid #e2e8f0; color: #64748b; font-weight: 600; font-size: 7pt; }
+  .chart-half td { padding: 2pt 4pt; border-bottom: 0.5pt solid #f1f5f9; }
+  .num { text-align: right; }
+
+  .zero-row { background: #fef2f2; }
+  .zero-badge { display: inline-block; background: #fecaca; color: #dc2626; padding: 0pt 4pt; border-radius: 2pt; font-size: 7pt; margin-left: 3pt; vertical-align: middle; }
+  .own-row { background: #eef2ff; }
+
+  .section-note { font-size: 8pt; color: #94a3b8; font-style: italic; margin-bottom: 8pt; }
+
   /* markdown content styles */
   .report-body h1 { font-size: 18pt; font-weight: 700; margin: 22pt 0 10pt; color: #0f172a; page-break-after: avoid; }
   .report-body h2 { font-size: 12pt; font-weight: 600; border-bottom: 1.5pt solid #e2e8f0; padding-bottom: 4pt; margin: 22pt 0 10pt; color: #1e293b; page-break-after: avoid; }
@@ -68,6 +95,127 @@
   {% endif %}
 </div>
 {% endif %}
+
+<!-- SVG chart macros -->
+{% macro svg_bar(items, max_w, val_key, label_key) %}
+  {% set mx = items | map(attribute=val_key) | max | default(1) %}
+  <svg width="100%" height="{{ items|length * 18 + 4 }}" style="font-size:7px;font-family:inherit;">
+    {% for it in items %}
+    {% set w = (it[val_key] / mx * max_w) | int %}
+    <text x="0" y="{{ loop.index0 * 18 + 12 }}" fill="#475569">{{ it[label_key][:16] }}</text>
+    <rect x="90" y="{{ loop.index0 * 18 + 3 }}" width="{{ w }}" height="11" rx="2" fill="{{ '#4f46e5' if it[label_key] == brand.name else '#94a3b8' }}"/>
+    <text x="{{ 90 + w + 4 }}" y="{{ loop.index0 * 18 + 12 }}" fill="#64748b">{{ it[val_key] }}</text>
+    {% endfor %}
+  </svg>
+{% endmacro %}
+
+{% macro svg_donut(slices, size) %}
+  {% set total = slices | map(attribute='n') | sum | default(1) %}
+  {% set colors = ['#4f46e5','#06b6d4','#8b5cf6','#f59e0b','#10b981','#ef4444','#6366f1','#ec4899'] %}
+  <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 42 42" style="display:block;margin:0 auto;">
+    <circle cx="21" cy="21" r="15.9" fill="none" stroke="#e2e8f0" stroke-width="6"/>
+    {% set offset = 0 %}
+    {% for s in slices %}
+    {% set pct = s.n / total %}
+    {% set dash = (pct * 100) | round(1) %}
+    <circle cx="21" cy="21" r="15.9" fill="none" stroke="{{ colors[loop.index0 % colors|length] }}" stroke-width="6"
+            stroke-dasharray="{{ dash }} {{ 100 - dash }}" stroke-dashoffset="{{ -offset }}"
+            transform="rotate(-90 21 21)"/>
+    {% set offset = offset + dash %}
+    {% endfor %}
+    <text x="21" y="22" text-anchor="middle" fill="#1e293b" font-size="7" font-weight="700">{{ total }}</text>
+    <text x="21" y="30" text-anchor="middle" fill="#94a3b8" font-size="5">{{ tr('kpi_runs') }}</text>
+  </svg>
+{% endmacro %}
+
+<!-- KEY METRICS + CHARTS -->
+<div class="charts-section">
+  <h2>{{ tr('kpi_title') }}</h2>
+
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-val {{ 'green' if visibility.visibility|default(0) >= 60 else ('amber' if visibility.visibility|default(0) >= 25 else 'red') }}">{{ "%.0f"|format(visibility.visibility|default(0)) }}%</div>
+      <div class="kpi-lbl">{{ tr('kpi_visibility') }}</div>
+      <div style="font-size:6.5pt;color:#94a3b8;margin-top:3pt;">{{ tr('kpi_visibility_desc', n=visibility.prompts_count|default(0), total=visibility.runs|default(0)) }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-val indigo">{{ visibility.prompts_count|default(0) }}</div>
+      <div class="kpi-lbl">{{ tr('kpi_prompts') }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-val indigo">{{ visibility.runs|default(0) }}</div>
+      <div class="kpi-lbl">{{ tr('kpi_runs') }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-val indigo">{{ visibility.citations|default(0) }}</div>
+      <div class="kpi-lbl">{{ tr('kpi_citations') }}</div>
+    </div>
+  </div>
+
+  {% set sov = visibility.sov or [] %}
+  {% set engines = visibility.engines or [] %}
+  {% if sov or engines %}
+  <div class="chart-row">
+    {% if sov %}
+    <div class="chart-half">
+      <h4>{{ tr('sov_title') }}</h4>
+      {{ svg_bar(sov[:8], 200, 'mentions', 'name') }}
+      <table style="margin-top:4pt;">
+        <tr><th>{{ tr('brand_col') }}</th><th class="num">{{ tr('mentions_col') }}</th><th class="num">{{ tr('share_col') }}</th><th class="num">{{ tr('avg_pos_col') }}</th></tr>
+        {% for s in sov[:8] %}
+        {% set share = (s.mentions / visibility.total_mentions * 100) if visibility.total_mentions else 0 %}
+        <tr class="{{ 'own-row' if s.name == brand.name else '' }}">
+          <td>{{ s.name[:18] }}{% if s.name == brand.name %} <span style="color:#4f46e5;font-size:6.5pt;">{{ tr('you_tag') }}</span>{% endif %}</td>
+          <td class="num">{{ s.mentions }}</td>
+          <td class="num">{{ "%.0f"|format(share) }}%</td>
+          <td class="num">{{ "%.1f"|format(s.avg_pos) if s.avg_pos else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    {% if engines %}
+    <div class="chart-half">
+      <h4>{{ tr('section_engines') }}</h4>
+      {{ svg_donut(engines, 130) }}
+      <div style="display:flex;flex-wrap:wrap;gap:2pt 8pt;margin-top:4pt;font-size:7pt;">
+        {% for e in engines %}
+        {% set colors = ['#4f46e5','#06b6d4','#8b5cf6','#f59e0b','#10b981','#ef4444','#6366f1','#ec4899'] %}
+        <span><span style="display:inline-block;width:6px;height:6px;border-radius:2px;background:{{ colors[loop.index0 % colors|length] }};vertical-align:middle;margin-right:2px;"></span>{{ e.name }} {{ e.n }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% set vis_prompts = visibility.prompt_rows or [] %}
+  {% if vis_prompts %}
+  <div style="margin-top:10pt;">
+    <h4 style="font-size:9pt;font-weight:600;margin:8pt 0 4pt;color:#475569;">{{ tr('section_visibility') }}</h4>
+    <table>
+      <tr><th>{{ tr('prompt_col') }}</th><th class="num" style="width:40pt">{{ tr('runs_col') }}</th><th style="width:100pt">{{ tr('visibility_col') }}</th></tr>
+      {% for p in vis_prompts %}
+      <tr class="{{ 'zero-row' if p.visibility == 0 else '' }}">
+        <td>
+          {{ p.text[:80] }}
+          {% if p.tags %}<span style="display:inline-block;background:#eef2ff;color:#4f46e5;padding:0pt 3pt;border-radius:2pt;font-size:6.5pt;">{{ p.tags }}</span>{% endif %}
+          {% if p.visibility == 0 %}<span class="zero-badge">{{ tr('zero_visibility') }}</span>{% endif %}
+        </td>
+        <td class="num">{{ p.runs }}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:4pt;">
+            <div style="height:10pt;background:{{ '#dc2626' if p.visibility == 0 else '#4f46e5' }};border-radius:2pt;width:{{ (p.visibility/100*80)|int if p.visibility > 0 else 3 }}px;"></div>
+            <span style="font-size:8pt;font-weight:600;">{{ "%.0f"|format(p.visibility) }}%</span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+</div>
 
 <!-- LLM-GENERATED REPORT BODY -->
 <div class="report-body">
