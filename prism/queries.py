@@ -29,13 +29,13 @@ def overview(conn, tenant_id: int, days: int = 30, model_id: int | None = None) 
     totals = q1(
         conn,
         f"""SELECT COUNT(*) AS runs, COUNT(DISTINCT r.prompt_id) AS prompts
-            FROM runs r WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}""",
+            FROM runs r WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}""",
         (tenant_id, f"-{days} days", *mp),
     )
     cited = q1(
         conn,
         f"""SELECT COUNT(*) AS n FROM citations c JOIN runs r ON r.id = c.run_id
-            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}""",
+            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}""",
         (tenant_id, f"-{days} days", *mp),
     )
     vis = q1(
@@ -44,7 +44,7 @@ def overview(conn, tenant_id: int, days: int = 30, model_id: int | None = None) 
                    SUM(CASE WHEN m.id IS NOT NULL THEN 1 ELSE 0 END) AS mentioned
             FROM runs r
             LEFT JOIN mentions m ON m.run_id = r.id AND m.brand_id = ?
-            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) AND r.status = 'ok' {mf}""",
+            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) AND r.status = 'ok' {mf}""",
         (own["id"], tenant_id, f"-{days} days", *mp),
     )
     last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ?", (tenant_id,))
@@ -52,7 +52,7 @@ def overview(conn, tenant_id: int, days: int = 30, model_id: int | None = None) 
         conn,
         f"""SELECT m.name, COUNT(*) AS n
             FROM runs r JOIN models m ON m.id = r.model_id
-            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
+            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
             GROUP BY m.name ORDER BY n DESC""",
         (tenant_id, f"-{days} days", *mp),
     )
@@ -84,7 +84,7 @@ def visibility_page(conn, tenant_id: int, days: int = 30, model_id: int | None =
             FROM runs r
             LEFT JOIN mentions m ON m.run_id = r.id
             LEFT JOIN brands b ON b.id = m.brand_id
-            WHERE r.tenant_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', ?) {mf}
+            WHERE r.tenant_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
             GROUP BY r.id""",
         (tenant_id, f"-{days} days", *mp),
     )
@@ -157,7 +157,7 @@ def share_of_voice_page(conn, tenant_id: int, days: int = 30, model_id: int | No
             FROM mentions m
             JOIN brands b ON b.id = m.brand_id
             JOIN runs r ON r.id = m.run_id
-            WHERE r.tenant_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', ?) {mf}
+            WHERE r.tenant_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
             GROUP BY b.id""",
         (tenant_id, f"-{days} days", *mp),
     )
@@ -175,7 +175,7 @@ def share_of_voice_page(conn, tenant_id: int, days: int = 30, model_id: int | No
         f"""SELECT date(r.ran_at) AS day, b.name, COUNT(DISTINCT m.run_id) AS n
             FROM mentions m JOIN brands b ON b.id = m.brand_id
             JOIN runs r ON r.id = m.run_id
-            WHERE r.tenant_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', ?) {mf}
+            WHERE r.tenant_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
             GROUP BY day, b.id""",
         (tenant_id, f"-{days} days", *mp),
     )
@@ -204,7 +204,7 @@ def citations_page(conn, tenant_id: int, days: int = 30, model_id: int | None = 
     d_total = q1(conn,
         f"""SELECT COUNT(*) AS n FROM (
               SELECT c.domain FROM citations c JOIN runs r ON r.id = c.run_id
-              WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
+              WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
               GROUP BY c.domain
             )""",
         (tenant_id, window, *mp))["n"]
@@ -214,7 +214,7 @@ def citations_page(conn, tenant_id: int, days: int = 30, model_id: int | None = 
         f"""SELECT c.domain, c.category, COUNT(*) AS n,
                    COUNT(DISTINCT c.url) AS urls
             FROM citations c JOIN runs r ON r.id = c.run_id
-            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
+            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
             GROUP BY c.domain ORDER BY n DESC LIMIT ? OFFSET ?""",
         (tenant_id, window, *mp, PER, d_off),
     )
@@ -223,7 +223,7 @@ def citations_page(conn, tenant_id: int, days: int = 30, model_id: int | None = 
     u_total = q1(conn,
         f"""SELECT COUNT(*) AS n FROM (
               SELECT c.url FROM citations c JOIN runs r ON r.id = c.run_id
-              WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
+              WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
               GROUP BY c.url
             )""",
         (tenant_id, window, *mp))["n"]
@@ -232,7 +232,7 @@ def citations_page(conn, tenant_id: int, days: int = 30, model_id: int | None = 
         conn,
         f"""SELECT c.url, c.domain, COUNT(*) AS n
             FROM citations c JOIN runs r ON r.id = c.run_id
-            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
+            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
             GROUP BY c.url ORDER BY n DESC LIMIT ? OFFSET ?""",
         (tenant_id, window, *mp, PER, u_off),
     )
@@ -242,7 +242,7 @@ def citations_page(conn, tenant_id: int, days: int = 30, model_id: int | None = 
         conn,
         f"""SELECT c.category, COUNT(*) AS n
             FROM citations c JOIN runs r ON r.id = c.run_id
-            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
+            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
             GROUP BY c.category ORDER BY n DESC""",
         (tenant_id, window, *mp),
     )
@@ -250,7 +250,7 @@ def citations_page(conn, tenant_id: int, days: int = 30, model_id: int | None = 
         conn,
         f"""SELECT date(r.ran_at) AS day, c.domain, COUNT(*) AS count
             FROM citations c JOIN runs r ON r.id = c.run_id
-            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
+            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
             GROUP BY day, c.domain""",
         (tenant_id, window, *mp),
     )
@@ -283,7 +283,7 @@ def opportunities_page(conn, tenant_id: int, days: int = 30, model_id: int | Non
             LEFT JOIN mentions om ON om.run_id = r.id AND om.brand_id = ?
             LEFT JOIN mentions cm ON cm.run_id = r.id AND cm.brand_id != ?
             LEFT JOIN brands cb ON cb.id = cm.brand_id
-            WHERE p.active = 1 AND p.tenant_id = ? AND r.ran_at >= datetime('now', ?) {mf}
+            WHERE p.active = 1 AND p.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
             GROUP BY p.id""",
         (tenant_id, own["id"], own["id"], tenant_id, f"-{days} days", *mp),
     )
@@ -332,7 +332,7 @@ def prompt_detail(conn, prompt_id: int, days: int = 30,
         """SELECT b.name, COUNT(DISTINCT m.run_id) AS n, AVG(m.position) AS pos
            FROM mentions m JOIN brands b ON b.id = m.brand_id
            JOIN runs r ON r.id = m.run_id
-           WHERE r.prompt_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', ?)
+           WHERE r.prompt_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', '+8 hours', ?)
            GROUP BY b.id ORDER BY n DESC""",
         (prompt_id, f"-{days} days"),
     )
@@ -344,7 +344,7 @@ def prompt_detail(conn, prompt_id: int, days: int = 30,
         """SELECT COUNT(*) AS total,
                   SUM(CASE WHEN m.id IS NOT NULL THEN 1 ELSE 0 END) AS mentioned
            FROM runs r LEFT JOIN mentions m ON m.run_id = r.id AND m.brand_id = ?
-           WHERE r.prompt_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', ?)""",
+           WHERE r.prompt_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', '+8 hours', ?)""",
         (own["id"], prompt_id, f"-{days} days"),
     )
 
@@ -352,7 +352,7 @@ def prompt_detail(conn, prompt_id: int, days: int = 30,
     cit_total = q1(conn,
         """SELECT COUNT(*) AS n FROM (
              SELECT c.url FROM citations c JOIN runs r ON r.id = c.run_id
-             WHERE r.prompt_id = ? AND r.ran_at >= datetime('now', ?)
+             WHERE r.prompt_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?)
              GROUP BY c.url
            )""",
         (prompt_id, f"-{days} days"))["n"]
@@ -361,7 +361,7 @@ def prompt_detail(conn, prompt_id: int, days: int = 30,
         conn,
         """SELECT c.url, c.domain, c.category, COUNT(*) AS n
            FROM citations c JOIN runs r ON r.id = c.run_id
-           WHERE r.prompt_id = ? AND r.ran_at >= datetime('now', ?)
+           WHERE r.prompt_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?)
            GROUP BY c.url ORDER BY n DESC LIMIT ? OFFSET ?""",
         (prompt_id, f"-{days} days", CITATIONS_PER, cit_offset),
     )
@@ -410,18 +410,18 @@ def report_data(conn, tenant_id: int, days: int = 30) -> dict:
                   SUM(CASE WHEN m.id IS NOT NULL THEN 1 ELSE 0 END) AS mentioned
            FROM runs r
            LEFT JOIN mentions m ON m.run_id = r.id AND m.brand_id = ?
-           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?) AND r.status = 'ok'""",
+           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) AND r.status = 'ok'""",
         (own["id"], tenant_id, window))
     visibility = stats.overall_visibility(vis["total"] or 0, vis["mentioned"] or 0)
 
     # Stats
     totals = q1(conn,
         """SELECT COUNT(*) AS runs, COUNT(DISTINCT r.prompt_id) AS prompts
-           FROM runs r WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?)""",
+           FROM runs r WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?)""",
         (tenant_id, window))
     cited = q1(conn,
         """SELECT COUNT(*) AS n FROM citations c JOIN runs r ON r.id = c.run_id
-           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?)""",
+           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?)""",
         (tenant_id, window))
     last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ?", (tenant_id,))
 
@@ -432,7 +432,7 @@ def report_data(conn, tenant_id: int, days: int = 30) -> dict:
                   SUM(CASE WHEN m.id IS NOT NULL THEN 1 ELSE 0 END) AS mentioned
            FROM prompts p
            LEFT JOIN runs r ON r.prompt_id = p.id AND r.status = 'ok'
-             AND r.ran_at >= datetime('now', ?)
+             AND r.ran_at >= datetime('now', '+8 hours', ?)
            LEFT JOIN mentions m ON m.run_id = r.id AND m.brand_id = ?
            WHERE p.active = 1 AND p.tenant_id = ?
            GROUP BY p.id ORDER BY p.id""",
@@ -451,7 +451,7 @@ def report_data(conn, tenant_id: int, days: int = 30) -> dict:
            JOIN mentions m ON m.brand_id = b.id
            JOIN runs r ON r.id = m.run_id
            WHERE b.tenant_id = ? AND r.status = 'ok'
-             AND r.ran_at >= datetime('now', ?)
+             AND r.ran_at >= datetime('now', '+8 hours', ?)
            GROUP BY b.id ORDER BY mentions DESC""",
         (tenant_id, window))
     total_mentions = sum(s["mentions"] for s in sov)
@@ -460,13 +460,13 @@ def report_data(conn, tenant_id: int, days: int = 30) -> dict:
     top_domains = q(conn,
         """SELECT c.domain, c.category, COUNT(*) AS n
            FROM citations c JOIN runs r ON r.id = c.run_id
-           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?)
+           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?)
            GROUP BY c.domain ORDER BY n DESC LIMIT 15""",
         (tenant_id, window))
     top_urls = q(conn,
         """SELECT c.url, c.domain, COUNT(*) AS n
            FROM citations c JOIN runs r ON r.id = c.run_id
-           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?)
+           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?)
            GROUP BY c.url ORDER BY n DESC LIMIT 15""",
         (tenant_id, window))
 
@@ -474,7 +474,7 @@ def report_data(conn, tenant_id: int, days: int = 30) -> dict:
     engines = q(conn,
         """SELECT m.name, COUNT(*) AS n
            FROM runs r JOIN models m ON m.id = r.model_id
-           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', ?)
+           WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?)
            GROUP BY m.name ORDER BY n DESC""",
         (tenant_id, window))
 
