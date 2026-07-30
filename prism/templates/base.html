@@ -59,8 +59,10 @@
        class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'tenants' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('clients') }}</a>
     <a href="/settings/keys"
        class="rounded-lg px-3 py-2 text-sm font-medium {{ 'bg-indigo-50 text-indigo-700' if page == 'settings-keys' else 'text-slate-600 hover:bg-slate-100' }}">{{ t('engine_keys') }}</a>
+    {% if not has_brand %}
     <a href="/setup"
        class="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-center text-sm font-semibold text-indigo-700 hover:bg-indigo-100">{{ t('setup_brand', name=tenant.current.name) }}</a>
+    {% endif %}
 
     {# Language switcher #}
     <form method="get" action="{{ request.url.path }}" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-2">

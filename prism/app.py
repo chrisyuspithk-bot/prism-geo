@@ -73,9 +73,11 @@ def ctx(request: Request, **kwargs) -> dict:
     lang = _resolve_lang(request)
     with connect() as conn:
         models_list = [dict(m) for m in queries.models(conn)]
+        has_brand = q1(conn, "SELECT 1 FROM brands WHERE tenant_id = ? AND is_own = 1",
+                       (tenant["id"],)) is not None
     return {"request": request, "models": models_list, "tenant": tenant,
             "PRISM_KEY": keystore.has_any_key(), "lang": lang,
-            "languages": i18n.LANGUAGES,
+            "languages": i18n.LANGUAGES, "has_brand": has_brand,
             "t": lambda key, **fmt: i18n.t(lang, key, **fmt), **kwargs}
 
 
