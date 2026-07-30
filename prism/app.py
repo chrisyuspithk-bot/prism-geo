@@ -9,6 +9,7 @@ configured once, centrally, by the operator and shared across all tenants.
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import Thread
 
@@ -25,19 +26,20 @@ from .onboarding import analyze_website, generate_prompts
 BASE = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 
-app = FastAPI(title="prism", description="AI visibility tracking (GEO/AEO)")
-app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 
-
-@app.on_event("startup")
-async def startup() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     init_db()
     jobs.recover_stale_jobs()
     jobs.ensure_worker()
-    # Reset any sites stuck in 'crawling' from a previous crash
     with connect() as conn:
         conn.execute("UPDATE sites SET status = 'failed', crawl_error = 'Server restarted during crawl' WHERE status = 'crawling'")
     scheduler.ensure_scheduler()
+    yield
+
+
+app = FastAPI(title="prism", description="AI visibility tracking (GEO/AEO)", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 
 
 # --- Tenant resolution ---------------------------------------------------------
