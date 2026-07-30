@@ -306,8 +306,12 @@ def opportunities(request: Request):
 @app.get("/prompts/{prompt_id}", response_class=HTMLResponse)
 def prompt_detail(request: Request, prompt_id: int):
     days, _ = _filters(request)
+    citations_page = max(1, int(request.query_params.get("cit_page", "1")))
+    runs_page = max(1, int(request.query_params.get("run_page", "1")))
     with connect() as conn:
-        data = queries.prompt_detail(conn, prompt_id, days)
+        data = queries.prompt_detail(conn, prompt_id, days,
+                                     citations_page=citations_page,
+                                     runs_page=runs_page)
     if data is None:
         return RedirectResponse("/visibility", status_code=303)
     return templates.TemplateResponse(

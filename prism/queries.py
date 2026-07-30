@@ -267,19 +267,31 @@ def opportunities_page(conn, tenant_id: int, days: int = 30, model_id: int | Non
     return {"opportunities": opps}
 
 
-def prompt_detail(conn, prompt_id: int, days: int = 30) -> dict | None:
+def prompt_detail(conn, prompt_id: int, days: int = 30,
+                  citations_page: int = 1, runs_page: int = 1) -> dict | None:
+    CITATIONS_PER = 10
+    RUNS_PER = 5
+
     prompt = q1(conn, "SELECT * FROM prompts WHERE id = ?", (prompt_id,))
     if prompt is None:
         return None
     tenant_id = prompt["tenant_id"]
     own = q1(conn, "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 1", (tenant_id,))
+
+    # Runs with pagination
+    runs_total = q1(conn,
+        "SELECT COUNT(*) AS n FROM runs WHERE prompt_id = ?", (prompt_id,))["n"]
+    runs_offset = max(0, (runs_page - 1) * RUNS_PER)
     runs = q(
         conn,
         """SELECT r.*, m.name AS model_name FROM runs r
            JOIN models m ON m.id = r.model_id
-           WHERE r.prompt_id = ? ORDER BY r.ran_at DESC LIMIT 200""",
-        (prompt_id,),
+           WHERE r.prompt_id = ? ORDER BY r.ran_at DESC LIMIT ? OFFSET ?""",
+        (prompt_id, RUNS_PER, runs_offset),
     )
+    runs_pages = max(1, (runs_total + RUNS_PER - 1) // RUNS_PER)
+
+    # Mentions (no pagination — at most ~10 brands)
     mention_rows = q(
         conn,
         """SELECT b.name, COUNT(DISTINCT m.run_id) AS n, AVG(m.position) AS pos
@@ -289,7 +301,9 @@ def prompt_detail(conn, prompt_id: int, days: int = 30) -> dict | None:
            GROUP BY b.id ORDER BY n DESC""",
         (prompt_id, f"-{days} days"),
     )
-    ok_runs = [r for r in runs if r["status"] == "ok"]
+    ok_runs = q1(conn,
+        "SELECT COUNT(*) AS n FROM runs WHERE prompt_id = ? AND status = 'ok'",
+        (prompt_id,))["n"]
     in_window = q1(
         conn,
         """SELECT COUNT(*) AS total,
@@ -298,14 +312,26 @@ def prompt_detail(conn, prompt_id: int, days: int = 30) -> dict | None:
            WHERE r.prompt_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', ?)""",
         (own["id"], prompt_id, f"-{days} days"),
     )
+
+    # Citations with pagination
+    cit_total = q1(conn,
+        """SELECT COUNT(*) AS n FROM (
+             SELECT c.url FROM citations c JOIN runs r ON r.id = c.run_id
+             WHERE r.prompt_id = ? AND r.ran_at >= datetime('now', ?)
+             GROUP BY c.url
+           )""",
+        (prompt_id, f"-{days} days"))["n"]
+    cit_offset = max(0, (citations_page - 1) * CITATIONS_PER)
     citations = q(
         conn,
         """SELECT c.url, c.domain, c.category, COUNT(*) AS n
            FROM citations c JOIN runs r ON r.id = c.run_id
            WHERE r.prompt_id = ? AND r.ran_at >= datetime('now', ?)
-           GROUP BY c.url ORDER BY n DESC LIMIT 20""",
-        (prompt_id, f"-{days} days"),
+           GROUP BY c.url ORDER BY n DESC LIMIT ? OFFSET ?""",
+        (prompt_id, f"-{days} days", CITATIONS_PER, cit_offset),
     )
+    cit_pages = max(1, (cit_total + CITATIONS_PER - 1) // CITATIONS_PER)
+
     return {
         "prompt": dict(prompt),
         "runs": _dicts(runs),
@@ -315,6 +341,12 @@ def prompt_detail(conn, prompt_id: int, days: int = 30) -> dict | None:
         "visibility": stats.overall_visibility(
             in_window["total"] or 0, in_window["mentioned"] or 0),
         "own_brand": own["name"],
+        "runs_page": runs_page,
+        "runs_pages": runs_pages,
+        "runs_total": runs_total,
+        "citations_page": citations_page,
+        "citations_pages": cit_pages,
+        "citations_total": cit_total,
     }
 
 
