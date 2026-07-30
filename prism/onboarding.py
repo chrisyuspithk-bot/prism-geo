@@ -31,6 +31,13 @@ TAG_RE = re.compile(r"<[^>]+>")
 
 
 
+_SCRAPE_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; prism-geo/1.0; +https://prism-geo.fly.dev)",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9,zh-TW;q=0.8,zh;q=0.7",
+}
+
+
 async def analyze_website(url: str) -> dict:
     """Fetch homepage, return {url, title, description, headings} (best effort)."""
     if not url:
@@ -38,10 +45,14 @@ async def analyze_website(url: str) -> dict:
     target = url if "://" in url else f"https://{url}"
     try:
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-            resp = await client.get(target, headers={"User-Agent": "prism-geo/1.0"})
+            resp = await client.get(target, headers=_SCRAPE_HEADERS)
+            if resp.status_code != 200:
+                return {"url": target, "title": "", "description": "",
+                        "headings": [], "error": f"HTTP {resp.status_code}"}
             html = resp.text[:200_000]
-    except Exception:
-        return {"url": target, "title": "", "description": "", "headings": []}
+    except Exception as exc:
+        return {"url": target, "title": "", "description": "", "headings": [],
+                "error": str(exc)[:200]}
 
     def clean(s: str) -> str:
         return TAG_RE.sub("", s).strip()

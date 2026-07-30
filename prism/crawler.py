@@ -7,7 +7,11 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 _MAX_PAGES = 0  # 0 = no limit
-_HEADERS = {"User-Agent": "prism-geo/1.0 (content-crawler)"}
+_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; prism-geo/1.0; +https://prism-geo.fly.dev)",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9,zh-TW;q=0.8,zh;q=0.7",
+}
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
 
