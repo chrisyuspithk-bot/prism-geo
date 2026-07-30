@@ -523,6 +523,23 @@ def _build_page_diagnostics(pages: list[dict]) -> str:
                 f"your work with this client. This is a direct citation loss."
             )
             parts.append(entry)
+
+        parts.append(
+            "\n**Recommended writing structure for each case study page:**\n"
+            "Use this 3-part structure so the content becomes citable by AI engines:\n"
+            "1. **Client challenge** (1-2 sentences) — what problem did the client face?\n"
+            "   Example: \"DIOR required a security upgrade for their IFC flagship store "
+            "without disrupting luxury retail operations during business hours.\"\n"
+            "2. **Solution deployed** (2-3 sentences) — what did you install/configure?\n"
+            "   Example: \"SecurePro deployed 48 AI-powered cameras with facial recognition, "
+            "integrated with the building's existing access control system. Installation was "
+            "completed over 3 nights to avoid store closure.\"\n"
+            "3. **Measurable outcome** (1 sentence with numbers if possible) — what improved?\n"
+            "   Example: \"Shoplifting incidents dropped 62% in the first quarter, and the "
+            "store's insurance premium was reduced by 15%.\"\n"
+            "Apply this structure to EVERY case study page listed above. "
+            "Even partial information is better than an empty page."
+        )
         parts.append("")
 
     # ── Title-content mismatches ──
@@ -554,8 +571,33 @@ def _build_page_diagnostics(pages: list[dict]) -> str:
         "- Add JSON-LD Organization + LocalBusiness schema to the homepage.\n"
         "- Add FAQPage schema on service detail pages targeting common queries.\n"
         "- Add TechArticle schema on product pages (CCTV, EDR, backup solutions).\n"
-        "Implementation: a single <script type=\"application/ld+json\"> block per page.\n"
-        "No crawling changes needed — structured data lives in the page source."
+        "\n"
+        "**Minimal JSON-LD example for the homepage** (copy into <head> or <body>):\n"
+        "```html\n"
+        '<script type="application/ld+json">\n'
+        '{\n'
+        '  "@context": "https://schema.org",\n'
+        '  "@type": "LocalBusiness",\n'
+        '  "name": "COMPANY_NAME",\n'
+        '  "description": "One-sentence description of what the company does.",\n'
+        '  "url": "https://www.example.com",\n'
+        '  "telephone": "+852-XXXX-XXXX",\n'
+        '  "address": {\n'
+        '    "@type": "PostalAddress",\n'
+        '    "streetAddress": "Street and unit number",\n'
+        '    "addressLocality": "Hong Kong",\n'
+        '    "addressCountry": "HK"\n'
+        '  },\n'
+        '  "sameAs": [\n'
+        '    "https://www.linkedin.com/company/example"\n'
+        '  ]\n'
+        '}\n'
+        '</script>\n'
+        "```\n"
+        "Replace COMPANY_NAME, phone, address, and description with actual data. "
+        "Add the sameAs array with real social/profile URLs. "
+        "This single block gives AI engines structured identity data — "
+        "it takes 5 minutes to fill in and deploy."
     )
     parts.append("")
 
@@ -697,9 +739,15 @@ Pages crawled: {len(all_pages)}
 
 === PRE-COMPUTED PAGE DIAGNOSTICS ===
 These issues were found by automated analysis. You MUST include them in your report.
-- List the HIGH SEVERITY issues in the Content Diagnosis section with exact URLs.
-- Include the Schema gap as a "This week" action item in the Action Roadmap.
-- Use the thin/mismatch findings to write concrete, URL-specific recommendations.
+- List CRITICAL issues in the Content Diagnosis section with exact URLs.
+- For empty case study pages: include the recommended 3-part writing structure
+  (challenge → solution → outcome) in your report so the client knows exactly
+  what to write.
+- Include the Schema gap as a "This week" action item. Reference the JSON-LD
+  example provided.
+- In the Action Roadmap, tie each recommendation to specific pages (by URL) or
+  specific zero-visibility prompts from the visibility data.
+- Every action item must answer: what page/prompt, what to do, why it matters.
 
 {diagnostics}
 
