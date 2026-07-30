@@ -916,10 +916,15 @@ def _run_crawl(site_id: int, domain: str):
                     )
 
             with connect() as conn:
-                conn.execute(
-                    "UPDATE sites SET status = 'ready', page_count = ?, last_crawled = datetime('now') WHERE id = ?",
-                    (len(pages_data), site_id),
-                )
+                if not pages_data:
+                    conn.execute(
+                        "UPDATE sites SET status = 'failed', crawl_error = 'No pages could be fetched (site may block crawlers)', page_count = 0, last_crawled = datetime('now') WHERE id = ?",
+                        (site_id,))
+                else:
+                    conn.execute(
+                        "UPDATE sites SET status = 'ready', page_count = ?, last_crawled = datetime('now') WHERE id = ?",
+                        (len(pages_data), site_id),
+                    )
         except Exception as e:
             print(f"[crawl:{site_id}] FAILED: {e}", flush=True)
             with connect() as conn:
