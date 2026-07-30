@@ -17,8 +17,9 @@ website content against AI visibility data to produce a professional audit
 report. You are direct, data-specific, and never use generic praise.
 
 For each section, reference specific page URLs, content facts, competitor names,
-and visibility metrics from the provided data. Write in the same language as
-the brand content (Chinese for Chinese brands, English otherwise).
+and visibility metrics from the provided data.
+
+{lang_instruction}
 
 Return your analysis as a JSON object with these keys:
 - "executive_summary": 2-3 paragraph overall assessment
@@ -39,6 +40,15 @@ Return your analysis as a JSON object with these keys:
 - "competitor_insights": "1-2 paragraph analysis of competitor positioning vs the brand",
 - "recommendations": [{ "priority": "immediate|short_term|long_term", "action": "specific 1-sentence action item", "effort": "low|medium|high", "impact": "high|medium|low" }]
 }"""
+
+_LANG_INSTRUCTIONS = {
+    "zh-TW": "IMPORTANT: You MUST write ALL text values in Traditional Chinese (繁體中文). "
+             "Every note, assessment, executive_summary, competitor_insights, action, "
+             "and all other text fields must be in Chinese. Only JSON keys and enum values "
+             "(good/medium/thin, high/medium/low, immediate/short_term/long_term, "
+             "product/about/blog/service/landing/other, FAQ/case_studies/etc.) remain in English.",
+    "en": "Write all text values in English.",
+}
 
 # Audit report template strings — keyed by language
 _T = {
@@ -292,7 +302,8 @@ def _build_content_summary(pages: list[dict], max_per_site: int = 30) -> str:
     return "\n---\n".join(lines)
 
 
-def _call_llm(api_key: str, base_url: str, model: str, prompt: str) -> str:
+def _call_llm(api_key: str, base_url: str, model: str, prompt: str,
+              system: str | None = None) -> str:
     """Make an LLM call, return text response."""
     url = base_url.rstrip("/")
     if not url.endswith("/chat/completions"):
@@ -303,7 +314,7 @@ def _call_llm(api_key: str, base_url: str, model: str, prompt: str) -> str:
         json={
             "model": model,
             "messages": [
-                {"role": "system", "content": AUDIT_SYSTEM},
+                {"role": "system", "content": system or AUDIT_SYSTEM},
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.5,
@@ -386,6 +397,9 @@ def analyze(tenant_id: int, days: int = 30, lang: str = "zh-TW") -> dict:
             )
         )
 
+    lang_instruction = _LANG_INSTRUCTIONS.get(lang, _LANG_INSTRUCTIONS["en"])
+    system = AUDIT_SYSTEM.format(lang_instruction=lang_instruction)
+
     prompt = f"""Analyze this brand for a GEO audit report.
 
 BRAND: {data['brand']['name']}
@@ -400,10 +414,12 @@ PAGES CRAWLED: {len(all_pages)}
 
 Analyze the website content and visibility data. Return JSON per the system prompt.
 Focus on: page quality, fact density, missing content types, brand consistency,
-freshness signals, five-dimension scoring, competitor insights, and recommendations."""
+freshness signals, five-dimension scoring, competitor insights, and recommendations.
+
+REMINDER: {lang_instruction}"""
 
     try:
-        llm_response = _call_llm(api_key, base_url, model, prompt)
+        llm_response = _call_llm(api_key, base_url, model, prompt, system)
         analysis = _parse_llm_json(llm_response)
         if analysis.get("error"):
             print(f"[audit] LLM parse failed: {llm_response[:300]}", flush=True)
