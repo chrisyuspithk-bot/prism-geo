@@ -24,14 +24,14 @@
         {% endif %}
       </p>
     </div>
-    <form method="get" action="/reports/audit/loading" class="flex items-end gap-3">
-      <select name="days" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
+    <div class="flex items-end gap-3">
+      <select id="auditDays" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
         <option value="7">{{ t('last_7_days') }}</option>
         <option value="30" selected>{{ t('last_30_days') }}</option>
         <option value="90">{{ t('last_90_days') }}</option>
       </select>
-      <button type="submit" class="rounded-lg bg-indigo-600 px-5 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">{{ t('download_pdf') }}</button>
-    </form>
+      <button id="btnAudit" onclick="startAudit()" class="rounded-lg bg-indigo-600 px-5 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">{{ t('download_pdf') }}</button>
+    </div>
   </div>
 
   <div class="mt-4 flex flex-wrap gap-2 text-xs text-slate-500">
@@ -64,4 +64,86 @@
 </div>
 
 {% endif %}
+
+<!-- OVERLAY -->
+<div id="auditOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,0.45);backdrop-filter:blur(2px);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;box-shadow:0 25px 50px rgba(0,0,0,0.15);padding:36px 48px;max-width:400px;width:90%;text-align:center;">
+    <h2 id="overlayStatus" style="font-size:15px;color:#1e293b;margin:0 0 4px;font-weight:600;">🎯 正在生成 GEO 審計報告</h2>
+    <div id="overlayLabel" style="font-size:12px;color:#64748b;margin-bottom:14px;">準備中…</div>
+    <div style="height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:10px;">
+      <div id="overlayBar" style="height:100%;width:0%;background:linear-gradient(90deg,#4f46e5,#7c3aed);border-radius:999px;transition:width 0.4s;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;">
+      <span data-th="10">內容分析</span><span data-th="40">策略評估</span><span data-th="70">路線圖</span><span data-th="90">生成 PDF</span>
+    </div>
+    <div id="overlayErr" style="display:none;color:#dc2626;font-size:12px;margin-top:12px;"></div>
+  </div>
+</div>
+
+<script>
+var _auditPolling = null;
+
+function startAudit() {
+  var overlay = document.getElementById('auditOverlay');
+  overlay.style.display = 'flex';
+  document.getElementById('overlayStatus').textContent = '🎯 正在生成 GEO 審計報告';
+  document.getElementById('overlayLabel').textContent = '準備中…';
+  document.getElementById('overlayBar').style.width = '0%';
+  document.getElementById('overlayErr').style.display = 'none';
+  document.getElementById('btnAudit').disabled = true;
+
+  var days = document.getElementById('auditDays').value;
+  fetch('/api/audit/start?days=' + days, { method: 'POST', credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      pollAudit(data.job_id);
+    })
+    .catch(function(e) {
+      showAuditError(e.message);
+    });
+}
+
+function pollAudit(jobId) {
+  var steps = document.querySelectorAll('#auditOverlay [data-th]');
+  _auditPolling = setInterval(function() {
+    fetch('/api/audit/progress/' + jobId, { credentials: 'same-origin' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        document.getElementById('overlayBar').style.width = d.progress + '%';
+        document.getElementById('overlayLabel').textContent = d.label;
+        steps.forEach(function(s) {
+          var th = parseInt(s.getAttribute('data-th')) || 0;
+          s.style.color = d.progress >= th ? '#4f46e5' : '#94a3b8';
+          s.style.fontWeight = d.progress >= th ? '600' : '400';
+        });
+        if (d.done) {
+          clearInterval(_auditPolling);
+          if (d.error) {
+            showAuditError(d.error);
+          } else {
+            document.getElementById('overlayStatus').textContent = '✅ 報告已生成';
+            document.getElementById('overlayLabel').textContent = '下載開始…';
+            var a = document.createElement('a');
+            a.href = '/reports/audit/result/' + jobId;
+            a.download = 'geo-audit-report.pdf';
+            a.click();
+            setTimeout(function() {
+              document.getElementById('auditOverlay').style.display = 'none';
+              document.getElementById('btnAudit').disabled = false;
+            }, 1500);
+          }
+        }
+      });
+  }, 800);
+}
+
+function showAuditError(msg) {
+  clearInterval(_auditPolling);
+  document.getElementById('overlayStatus').textContent = '❌ 生成失敗';
+  document.getElementById('overlayLabel').textContent = '請稍後再試';
+  document.getElementById('overlayErr').style.display = 'block';
+  document.getElementById('overlayErr').textContent = msg;
+  document.getElementById('btnAudit').disabled = false;
+}
+</script>
 {% endblock %}
