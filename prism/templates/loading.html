@@ -46,7 +46,7 @@
   const params = new URLSearchParams(window.location.search);
   const days = params.get('days') || '30';
   try {
-    const start = await fetch('/api/audit/start?days=' + days, { method: 'POST', credentials: 'same-origin' });
+    const start = await fetch('/api/audit/start?days=' + days + '&lang={{ lang }}', { method: 'POST', credentials: 'same-origin' });
     if (!start.ok) throw new Error('Failed to start report generation');
     const { job_id } = await start.json();
 

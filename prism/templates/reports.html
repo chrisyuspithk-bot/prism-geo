@@ -121,7 +121,7 @@ function startAudit() {
   document.getElementById('btnAudit').disabled = true;
 
   var days = document.getElementById('auditDays').value;
-  fetch('/api/audit/start?days=' + days, { method: 'POST', credentials: 'same-origin' })
+  fetch('/api/audit/start?days=' + days + '&lang={{ lang }}', { method: 'POST', credentials: 'same-origin' })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       pollAudit(data.job_id);
