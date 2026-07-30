@@ -63,6 +63,15 @@
   </div>
   {% endfor %}
 
+  {# Add custom engine button #}
+  <div class="flex justify-end">
+    <form method="post" action="/settings/keys/custom/add">
+      <button class="rounded-lg border border-dashed border-slate-300 px-4 py-2 text-sm font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600">
+        + Add Custom Engine
+      </button>
+    </form>
+  </div>
+
   {# Embedding API #}
   <div class="rounded-xl border {{ 'border-indigo-200 ring-1 ring-indigo-100' if embedding_key else 'border-slate-200' }} bg-white p-5">
     <div class="mb-3 flex items-center justify-between">

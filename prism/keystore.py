@@ -62,7 +62,27 @@ def _engine(engine: str) -> dict:
 
 def provider_status() -> list[dict]:
     """All engines with config state, for the settings page."""
-    return [_engine(e) for e in PROVIDERS]
+    engines = [_engine(e) for e in PROVIDERS]
+    # Dynamic custom engines
+    count_str = get("custom_engine_count") or "0"
+    try:
+        count = int(count_str)
+    except ValueError:
+        count = 0
+    for i in range(1, count + 1):
+        key = get(f"custom_{i}_api_key")
+        if key:  # only show engines that have at least a key
+            engines.append({
+                "name": f"custom_{i}",
+                "help": get(f"custom_{i}_label") or f"Custom #{i}",
+                "api_key": key,
+                "source": "ui",
+                "base_url": get(f"custom_{i}_base_url") or "",
+                "model": get(f"custom_{i}_model") or "",
+                "enabled": get(f"custom_{i}_enabled") != "0",
+                "custom_id": i,
+            })
+    return engines
 
 
 def active_engines() -> list[dict]:
@@ -86,3 +106,30 @@ def active_config() -> tuple[str, str, str, str]:
         return e["name"], e["api_key"], e["base_url"], e["model"]
     return ("deepseek", "", os.environ.get("PRISM_API_BASE", "https://api.deepseek.com"),
             os.environ.get("PRISM_MODEL", "deepseek-chat"))
+
+
+def add_custom_engine(label: str = "") -> int:
+    """Add a new custom engine slot, return its ID."""
+    count_str = get("custom_engine_count") or "0"
+    try:
+        count = int(count_str)
+    except ValueError:
+        count = 0
+    new_id = count + 1
+    with connect() as conn:
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+                     ("custom_engine_count", str(new_id)))
+        if label:
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+                         (f"custom_{new_id}_label", label))
+    return new_id
+
+
+def remove_custom_engine(custom_id: int) -> None:
+    """Remove a custom engine and all its settings."""
+    keys = [f"custom_{custom_id}_api_key", f"custom_{custom_id}_base_url",
+            f"custom_{custom_id}_model", f"custom_{custom_id}_enabled",
+            f"custom_{custom_id}_label"]
+    with connect() as conn:
+        for k in keys:
+            conn.execute("DELETE FROM settings WHERE key = ?", (k,))

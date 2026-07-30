@@ -400,6 +400,7 @@ def save_keys(request: Request, provider: str = Form(...),
     if provider == "embedding":
         keystore.set_value("embedding_api_key", api_key.strip() or "")
         return RedirectResponse("/settings/keys?saved=1", status_code=303)
+    # Built-in providers
     if provider in keystore.PROVIDERS:
         if api_key.strip():
             keystore.set_value(f"{provider}_api_key", api_key.strip())
@@ -408,6 +409,19 @@ def save_keys(request: Request, provider: str = Form(...),
         if model.strip():
             keystore.set_value(f"{provider}_model", model.strip())
         keystore.set_value(f"{provider}_enabled", "1" if enabled == "1" else "0")
+        return RedirectResponse("/settings/keys?saved=1", status_code=303)
+    # Dynamic custom engines (e.g. custom_1, custom_2)
+    import re
+    m = re.match(r'^custom_(\d+)$', provider)
+    if m:
+        prefix = f"custom_{m.group(1)}"
+        if api_key.strip():
+            keystore.set_value(f"{prefix}_api_key", api_key.strip())
+        if base_url.strip():
+            keystore.set_value(f"{prefix}_base_url", base_url.strip())
+        if model.strip():
+            keystore.set_value(f"{prefix}_model", model.strip())
+        keystore.set_value(f"{prefix}_enabled", "1" if enabled == "1" else "0")
     return RedirectResponse("/settings/keys?saved=1", status_code=303)
 
 
@@ -419,6 +433,18 @@ def clear_key(provider: str):
     if provider in keystore.PROVIDERS:
         for suffix in ("api_key", "base_url", "model", "enabled"):
             keystore.set_value(f"{provider}_{suffix}", "")
+        return RedirectResponse("/settings/keys", status_code=303)
+    # Dynamic custom engine
+    import re
+    m = re.match(r'^custom_(\d+)$', provider)
+    if m:
+        keystore.remove_custom_engine(int(m.group(1)))
+    return RedirectResponse("/settings/keys", status_code=303)
+
+
+@app.post("/settings/keys/custom/add")
+def add_custom_engine():
+    keystore.add_custom_engine()
     return RedirectResponse("/settings/keys", status_code=303)
 
 
