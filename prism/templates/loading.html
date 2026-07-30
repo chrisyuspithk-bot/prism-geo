@@ -12,23 +12,33 @@
   }
   .card {
     background: #fff; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 24px rgba(0,0,0,0.04);
-    padding: 48px 64px; text-align: center; max-width: 420px; width: 100%;
+    padding: 40px 56px; text-align: center; max-width: 440px; width: 100%;
   }
-  .spinner {
-    width: 48px; height: 48px; border: 4px solid #e2e8f0; border-top-color: #4f46e5;
-    border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px;
+  h2 { font-size: 16px; color: #1e293b; margin-bottom: 6px; font-weight: 600; }
+  .step-label { font-size: 13px; color: #64748b; margin-bottom: 16px; min-height: 20px; }
+  .bar-track {
+    width: 100%; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-bottom: 12px;
   }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  h2 { font-size: 16px; color: #1e293b; margin-bottom: 8px; font-weight: 600; }
-  p { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+  .bar-fill {
+    height: 100%; background: linear-gradient(90deg, #4f46e5, #7c3aed); border-radius: 999px;
+    transition: width 0.4s ease; width: 0%;
+  }
+  .steps { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; }
+  .steps span { flex: 1; text-align: center; }
   .error { color: #dc2626; margin-top: 16px; font-size: 13px; display: none; }
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="spinner" id="spinner"></div>
   <h2 id="status">🎯 正在生成 GEO 審計報告</h2>
-  <p id="sub">正在分析網站內容與 AI 可見度數據，請稍候…</p>
+  <div class="step-label" id="label">準備中…</div>
+  <div class="bar-track"><div class="bar-fill" id="bar"></div></div>
+  <div class="steps">
+    <span data-th="10">內容分析</span>
+    <span data-th="40">策略評估</span>
+    <span data-th="70">路線圖</span>
+    <span data-th="90">生成 PDF</span>
+  </div>
   <p class="error" id="err"></p>
 </div>
 <script>
@@ -36,20 +46,52 @@
   const params = new URLSearchParams(window.location.search);
   const days = params.get('days') || '30';
   try {
-    const resp = await fetch('/reports/audit?days=' + days, { credentials: 'same-origin' });
-    if (!resp.ok) throw new Error('伺服器錯誤 (' + resp.status + ')');
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    document.getElementById('status').textContent = '✅ 報告已生成';
-    document.getElementById('sub').textContent = '下載開始…';
-    const a = document.createElement('a'); a.href = url; a.download = 'geo-audit-report.pdf';
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    setTimeout(function() { window.history.back(); }, 1500);
+    // Start the audit job
+    const start = await fetch('/api/audit/start?days=' + days, { method: 'POST', credentials: 'same-origin' });
+    if (!start.ok) throw new Error('無法啟動報告生成');
+    const { job_id } = await start.json();
+
+    // Poll for progress
+    const bar = document.getElementById('bar');
+    const label = document.getElementById('label');
+    const steps = document.querySelectorAll('.steps span');
+    const status = document.getElementById('status');
+
+    function updateUI(prog, lbl) {
+      bar.style.width = prog + '%';
+      label.textContent = lbl;
+      steps.forEach(function(s) {
+        var th = parseInt(s.getAttribute('data-th')) || 0;
+        s.style.color = prog >= th ? '#4f46e5' : '#94a3b8';
+        s.style.fontWeight = prog >= th ? '600' : '400';
+      });
+    }
+
+    while (true) {
+      await new Promise(function(r) { setTimeout(r, 800); });
+      var resp = await fetch('/api/audit/progress/' + job_id, { credentials: 'same-origin' });
+      if (!resp.ok) continue;
+      var data = await resp.json();
+
+      updateUI(data.progress, data.label);
+
+      if (data.done) {
+        if (data.error) throw new Error(data.error);
+        status.textContent = '✅ 報告已生成';
+        label.textContent = '下載開始…';
+        // Download the PDF
+        var a = document.createElement('a');
+        a.href = '/reports/audit/result/' + job_id;
+        a.download = 'geo-audit-report.pdf';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function() { window.history.back(); }, 1200);
+        return;
+      }
+    }
   } catch(e) {
-    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('bar').style.background = '#fecaca';
     document.getElementById('status').textContent = '❌ 生成失敗';
-    document.getElementById('sub').textContent = '請稍後再試或聯絡管理員。';
+    document.getElementById('label').textContent = '請稍後再試或聯絡管理員';
     document.getElementById('err').style.display = 'block';
     document.getElementById('err').textContent = e.message;
   }

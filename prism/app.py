@@ -7,10 +7,13 @@ configured once, centrally, by the operator and shared across all tenants.
 """
 
 import os
+import time
+import uuid
 from pathlib import Path
+from threading import Thread
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -695,6 +698,88 @@ def reports_download(request: Request, days: int = 30):
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
+# ── Audit progress tracking (in-memory) ──────────────────────────────────
+
+_audit_jobs: dict[str, dict] = {}
+
+
+def _audit_worker(job_id: str, tenant_id: int, days: int):
+    """Run audit generation in background, updating _audit_jobs."""
+    now = time.time()
+    try:
+        _audit_jobs[job_id] = {"progress": 0, "label": "正在讀取網站數據…", "done": False, "_ts": now}
+
+        # Step 1: gather data
+        data = audit_report.build_audit_data(tenant_id, days)
+        if data is None:
+            _audit_jobs[job_id] = {"progress": 0, "label": "錯誤", "done": True, "error": "無品牌數據", "_ts": now}
+            return
+
+        api_key, base_url, model = audit_report._get_llm()
+        if not api_key:
+            _audit_jobs[job_id] = {"progress": 0, "label": "錯誤", "done": True, "error": "未設定 LLM API 金鑰", "_ts": now}
+            return
+
+        ct = audit_report._content_text(data["all_pages"])
+        vt = audit_report._vis_text(data)
+
+        # Call 1: content audit
+        _audit_jobs[job_id] = {"progress": 10, "label": "分析網站內容結構與品質…", "_ts": now}
+        r1 = audit_report._safe(api_key, base_url, model, audit_report._SYS_CONTENT,
+            f"BRAND: {data['brand']['name']}\nWEBSITE: {data['tenant'].get('website','')}\nPAGES CRAWLED: {len(data['all_pages'])}\n\n=== CRAWLED WEBSITE CONTENT ===\n{ct}\n\nAnalyze the content. Return JSON with executive_summary and content_audit.",
+            label="content")
+
+        # Call 2: strategy
+        _audit_jobs[job_id] = {"progress": 40, "label": "評估 AI 可見度與競爭對手…", "_ts": now}
+        r2 = audit_report._safe(api_key, base_url, model, audit_report._SYS_STRATEGY,
+            f"BRAND: {data['brand']['name']}\nCOMPETITORS: {', '.join(c['name'] for c in data['competitors'])}\nWEBSITE: {data['tenant'].get('website','')}\n\n=== VISIBILITY DATA ===\n{vt}\n\nBased on this data, return JSON with scoring, competitor_analysis, platform_analysis, and third_party_signals.",
+            label="strategy")
+
+        # Call 3: recommendations
+        _audit_jobs[job_id] = {"progress": 70, "label": "生成優化路線圖與建議…", "_ts": now}
+        findings = []
+        if "executive_summary" in r1:
+            findings.append(f"Summary: {r1['executive_summary'][:400]}")
+        if "scoring" in r2:
+            s2 = r2["scoring"]
+            findings.append("Scores: " + ", ".join(f"{k}={s2[k].get('score','?')}/100" for k in s2 if isinstance(s2[k], dict)))
+        if "content_audit" in r1:
+            ca = r1["content_audit"]
+            fd = ca.get("fact_density", {})
+            findings.append(f"Fact density: {fd.get('pct','?')}%")
+            mc = ca.get("missing_content", [])
+            if mc:
+                findings.append("Missing: " + ", ".join(m["type"] for m in mc[:5]))
+        r3 = audit_report._safe(api_key, base_url, model, audit_report._SYS_RECOMMENDATIONS,
+            f"BRAND: {data['brand']['name']}\nCOMPETITORS: {', '.join(c['name'] for c in data['competitors'])}\n\n=== AUDIT FINDINGS ===\n{chr(10).join(findings)}\n\nBased on these findings, return JSON with recommendations.",
+            label="recommendations")
+
+        analysis = {}
+        analysis.update(r1)
+        analysis.update(r2)
+        analysis.update(r3)
+        data["analysis"] = analysis
+
+        _audit_jobs[job_id] = {"progress": 90, "label": "生成 PDF 報告…", "_ts": now}
+
+        from weasyprint import HTML
+        from jinja2 import Environment, FileSystemLoader
+        env = Environment(loader=FileSystemLoader(str(BASE / "templates")))
+        template = env.get_template("audit_report.html")
+        html_str = template.render(**data)
+        pdf_bytes = HTML(string=html_str).write_pdf()
+
+        _audit_jobs[job_id] = {"progress": 100, "label": "完成", "done": True, "pdf": pdf_bytes, "_ts": time.time()}
+    except Exception as e:
+        _audit_jobs[job_id] = {"progress": 0, "label": "錯誤", "done": True, "error": str(e)[:300], "_ts": time.time()}
+
+    # Cleanup old jobs (>10 min)
+    now2 = time.time()
+    stale = [k for k, v in _audit_jobs.items() if v.get("done") and v.get("_ts", 0) > 0 and v.get("_ts", 0) < now2 - 600]
+    for k in stale:
+        _audit_jobs.pop(k, None)
+
+
 @app.get("/reports/audit")
 def reports_audit_download(request: Request, days: int = 30):
     """Generate and download a comprehensive GEO audit report as PDF."""
@@ -706,7 +791,6 @@ def reports_audit_download(request: Request, days: int = 30):
         own = workspace.own_brand(conn, tenant["id"])
     brand_slug = (own["name"] if own else "brand").lower().replace(" ", "-")
     filename = f"geo-audit-{brand_slug}-{days}d.pdf"
-    from fastapi.responses import Response
     return Response(pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
@@ -715,6 +799,46 @@ def reports_audit_download(request: Request, days: int = 30):
 def reports_audit_loading(request: Request):
     """Show a loading spinner while the audit generates, then trigger download."""
     return templates.TemplateResponse(request, "loading.html", context=ctx(request, page="reports"))
+
+
+@app.post("/api/audit/start")
+def api_audit_start(request: Request, days: int = 30):
+    """Start background audit generation, return job ID."""
+    tenant = _tenant(request)
+    job_id = uuid.uuid4().hex[:12]
+    _audit_jobs[job_id] = {"progress": 0, "label": "準備中…", "done": False, "_ts": time.time()}
+    t = Thread(target=_audit_worker, args=(job_id, tenant["id"], days), daemon=True)
+    t.start()
+    return JSONResponse({"job_id": job_id})
+
+
+@app.get("/api/audit/progress/{job_id}")
+def api_audit_progress(job_id: str):
+    """Poll for audit generation progress."""
+    job = _audit_jobs.get(job_id)
+    if job is None:
+        return JSONResponse({"error": "job not found"}, 404)
+    return JSONResponse({
+        "progress": job["progress"],
+        "label": job["label"],
+        "done": job.get("done", False),
+        "error": job.get("error"),
+    })
+
+
+@app.get("/reports/audit/result/{job_id}")
+def reports_audit_result(request: Request, job_id: str):
+    """Download completed audit PDF."""
+    job = _audit_jobs.get(job_id)
+    if job is None or not job.get("pdf"):
+        return RedirectResponse("/reports", 303)
+    tenant = _tenant(request)
+    with connect() as conn:
+        own = workspace.own_brand(conn, tenant["id"])
+    brand_slug = (own["name"] if own else "brand").lower().replace(" ", "-")
+    filename = f"geo-audit-{brand_slug}.pdf"
+    return Response(job["pdf"], media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 def _run_crawl(site_id: int, domain: str):
