@@ -337,7 +337,7 @@ def prompt_detail(conn, prompt_id: int, days: int = 30,
         "runs": _dicts(runs),
         "mention_table": _dicts(mention_rows),
         "citations": _dicts(citations),
-        "run_count": len(ok_runs),
+        "run_count": ok_runs,
         "visibility": stats.overall_visibility(
             in_window["total"] or 0, in_window["mentioned"] or 0),
         "own_brand": own["name"],
