@@ -16,6 +16,12 @@
   .kpi { flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; }
   .kpi .val { font-size: 22px; font-weight: 700; color: #4f46e5; }
   .kpi .lbl { font-size: 9px; color: #64748b; margin-top: 2px; }
+  .kpi .desc { font-size: 7px; color: #94a3b8; margin-top: 4px; line-height: 1.3; }
+  .section-desc { font-size: 9px; color: #64748b; margin: -8px 0 10px; font-style: italic; }
+  .zero-vis { background: #fef2f2; }
+  .zero-badge { display: inline-block; background: #fecaca; color: #dc2626; padding: 1px 5px; border-radius: 3px; font-size: 8px; margin-left: 4px; vertical-align: middle; }
+  .bar-zero { background: #fecaca; }
+  .own-row { background: #eef2ff; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
   th { background: #f1f5f9; text-align: left; padding: 6px 8px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; }
   td { padding: 5px 8px; border-bottom: 1px solid #f1f5f9; }
@@ -41,11 +47,31 @@
 
 <!-- KPI Cards -->
 <div class="kpi-grid">
-  <div class="kpi"><div class="val">{{ '%.0f'|format(visibility) }}%</div><div class="lbl">{{ t('visibility_pct') }}</div></div>
-  <div class="kpi"><div class="val">{{ runs }}</div><div class="lbl">{{ t('evaluations') }}</div></div>
-  <div class="kpi"><div class="val">{{ citations }}</div><div class="lbl">{{ t('total_citations') }}</div></div>
-  <div class="kpi"><div class="val">{{ comp_count }}</div><div class="lbl">{{ t('brand_competitors') }}</div></div>
-  <div class="kpi"><div class="val">{{ prompts_count }}</div><div class="lbl">{{ t('prompts_tracked') }}</div></div>
+  <div class="kpi">
+    <div class="val">{{ '%.0f'|format(visibility) }}%</div>
+    <div class="lbl">{{ t('visibility_pct') }}</div>
+    <div class="desc">{{ t('visibility_desc', n=prompts_count, total=runs) }}</div>
+  </div>
+  <div class="kpi">
+    <div class="val">{{ runs }}</div>
+    <div class="lbl">{{ t('evaluations') }}</div>
+    <div class="desc">{{ t('evaluations_desc') }}</div>
+  </div>
+  <div class="kpi">
+    <div class="val">{{ citations }}</div>
+    <div class="lbl">{{ t('total_citations') }}</div>
+    <div class="desc">{{ t('citations_desc') }}</div>
+  </div>
+  <div class="kpi">
+    <div class="val">{{ comp_count }}</div>
+    <div class="lbl">{{ t('brand_competitors') }}</div>
+    <div class="desc">{{ t('competitors_desc') }}</div>
+  </div>
+  <div class="kpi">
+    <div class="val">{{ prompts_count }}</div>
+    <div class="lbl">{{ t('prompts_tracked') }}</div>
+    <div class="desc">{{ t('prompts_desc') }}</div>
+  </div>
 </div>
 
 {% macro svg_bar_chart(items, max_w, item_key, val_key, label_key) %}
@@ -87,25 +113,30 @@
 
 <!-- Visibility per prompt -->
 <h2>1. {{ t('report_section_visibility') }}</h2>
+<p class="section-desc">{{ t('visibility_section_desc', n=prompts_count, visible=prompt_rows|selectattr('visibility', 'gt', 0)|list|length) }}</p>
 <table>
   <tr><th>{{ t('prompts') }}</th><th class="num" style="width:50px">{{ t('runs_count', n='') }}</th><th style="width:120px">{{ t('visibility_label') }}</th></tr>
   {% for p in prompt_rows %}
-  <tr>
-    <td>{{ p.text[:80] }}{% if p.tags %} <span class="tag">{{ p.tags }}</span>{% endif %}</td>
+  <tr class="{{ 'zero-vis' if p.visibility == 0 else '' }}">
+    <td>
+      {{ p.text[:80] }}{% if p.tags %} <span class="tag">{{ p.tags }}</span>{% endif %}
+      {% if p.visibility == 0 %}<span class="zero-badge">{{ t('zero_visibility') }}</span>{% endif %}
+    </td>
     <td class="num">{{ p.runs }}</td>
-    <td><div class="bar-cell"><div class="bar" style="width:{{ (p.visibility / 100 * 100)|int }}px;"></div><span class="bar-label">{{ '%.0f'|format(p.visibility) }}%</span></div></td>
+    <td><div class="bar-cell"><div class="bar {{ 'bar-zero' if p.visibility == 0 else '' }}" style="width:{{ (p.visibility / 100 * 100)|int if p.visibility > 0 else 4 }}px;"></div><span class="bar-label">{{ '%.0f'|format(p.visibility) }}%</span></div></td>
   </tr>
   {% endfor %}
 </table>
 
 <!-- Share of Voice -->
 <h2>2. {{ t('share_of_voice') }}</h2>
+<p class="section-desc">{{ t('sov_section_desc', total=total_mentions, brands=sov|length) }}</p>
 {{ svg_bar_chart(sov, 300, 'mentions', 'mentions', 'name') }}
 
 <table>
   <tr><th>{{ t('brand_col') }}</th><th class="num">{{ t('mentions_col') }}</th><th class="num">{{ t('share_col') }}</th><th class="num">{{ t('avg_position_col') }}</th></tr>
   {% for s in sov %}
-  <tr>
+  <tr class="{{ 'own-row' if s.name == brand_name else '' }}">
     <td>{{ s.name }}{% if s.name == brand_name %} <span class="tag">{{ t('you_tag') }}</span>{% endif %}</td>
     <td class="num">{{ s.mentions }}</td>
     <td class="num">{{ '%.0f'|format(s.mentions / total_mentions * 100) if total_mentions else 0 }}%</td>
@@ -118,6 +149,7 @@
 
 <!-- Citations -->
 <h2>3. {{ t('citations') }}</h2>
+<p class="section-desc">{{ t('citations_section_desc', domains=top_domains|length, pages=top_urls|length, total=citations) }}</p>
 <h3>{{ t('top_domains') }}</h3>
 {{ svg_bar_chart(top_domains[:10], 310, 'n', 'n', 'domain') }}
 <table>
@@ -137,6 +169,7 @@
 
 <!-- Engine Distribution -->
 <h2>4. {{ t('report_section_engines') }}</h2>
+<p class="section-desc">{{ t('engines_section_desc', count=engines|length) }}</p>
 <table>
   <tr><td style="width:180px;vertical-align:top;padding-top:20px;">
     {% for e in engines %}
@@ -152,6 +185,7 @@
 
 <!-- Growth Opportunities -->
 <h2>5. {{ t('opportunities') }}</h2>
+<p class="section-desc">{{ t('gaps_section_desc', n=gaps|length) }}</p>
 {% if gaps %}
 {% for g in gaps %}
 <div class="gap-item"><strong>{{ g.text[:100] }}</strong><br>{{ t('competitors_present') }} {{ g.competitors }}</div>
