@@ -58,7 +58,7 @@
         <option value="30" selected>{{ t('last_30_days') }}</option>
         <option value="90">{{ t('last_90_days') }}</option>
       </select>
-      <a id="btnVisMD" href="/reports/download?days=30" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-50">{{ t('download_md') }}</a>
+      <a id="btnVisMD" href="/reports/download?days=30&lang={{ lang }}" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-50">{{ t('download_md') }}</a>
       <button id="btnVisPDF" onclick="downloadVisPDF()" class="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">{{ t('download_pdf') }}</button>
     </div>
   </div>
@@ -85,7 +85,7 @@
 var _auditPolling = null;
 
 document.getElementById('visDays').addEventListener('change', function() {
-  document.getElementById('btnVisMD').href = '/reports/download?days=' + this.value;
+  document.getElementById('btnVisMD').href = '/reports/download?days=' + this.value + '&lang={{ lang }}';
 });
 
 function downloadVisPDF() {
@@ -98,7 +98,7 @@ function downloadVisPDF() {
 
   var days = document.getElementById('visDays').value;
   var a = document.createElement('a');
-  a.href = '/reports/download?format=pdf&days=' + days;
+  a.href = '/reports/download?format=pdf&days=' + days + '&lang={{ lang }}';
   a.download = 'geo-visibility-report-' + days + 'd.pdf';
   document.body.appendChild(a);
   a.click();

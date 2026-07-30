@@ -772,9 +772,9 @@ def reports_page(request: Request):
 
 
 @app.get("/reports/download")
-def reports_download(request: Request, days: int = 30, format: str = "md"):
+def reports_download(request: Request, days: int = 30, format: str = "md", lang: str = ""):
     tenant = _tenant(request)
-    lang = _resolve_lang(request)
+    lang = lang or _resolve_lang(request)
     with connect() as conn:
         own = workspace.own_brand(conn, tenant["id"])
     brand_slug = (own["name"] if own else "brand").lower().replace(" ", "-")
