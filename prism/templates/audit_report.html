@@ -90,7 +90,7 @@
 {% endif %}
 
 <!-- KPI ROW -->
-<h2>§0 總覽</h2>
+<h2>1. 總覽</h2>
 <div class="kpi-row">
   <div class="kpi">
     <div class="kpi-label">品牌可見度</div>
@@ -115,8 +115,8 @@
 <p class="prose" style="font-size:9pt;color:#475569;">{{ analysis.executive_summary }}</p>
 {% endif %}
 
-<!-- AI VISIBILITY BASELINE + CONTENT AUDIT -->
-<h2>§1 AI 搜尋可見度基線</h2>
+<!-- AI VISIBILITY BASELINE -->
+<h2>2. AI 搜尋可見度基線</h2>
 
 {% if visibility.prompt_rows %}
 <table>
@@ -163,13 +163,13 @@
 <!-- CONTENT AUDIT (LLM) -->
 {% if analysis.content_audit %}
 <div class="page-break"></div>
-<h2>§1 網站內容審計（續）</h2>
+<h2>3. 網站內容審計</h2>
 <p style="font-size:8.5pt;color:#64748b;margin-bottom:10pt;">
   基於 Content Studio 爬取的 {{ (pages_by_site.values()|list)|map('length')|sum }} 個頁面進行分析。
 </p>
 
 {% if analysis.content_audit.page_inventory %}
-<h3>§1.1 頁面清單與分類</h3>
+<h3>3.1 頁面清單與分類</h3>
 <table>
   <tr><th>URL</th><th>標題</th><th>分類</th><th>質量</th><th>評估</th></tr>
   {% for p in analysis.content_audit.page_inventory[:25] %}
@@ -189,7 +189,7 @@
 {% endif %}
 
 {% if analysis.content_audit.fact_density %}
-<h3>§1.2 事實密度分析</h3>
+<h3>3.2 事實密度分析</h3>
 <div style="display:flex;align-items:center;gap:10pt;margin-bottom:8pt;">
   <div style="font-size:18pt;font-weight:700;color:{{ '#16a34a' if analysis.content_audit.fact_density.pct >= 40 else ('#d97706' if analysis.content_audit.fact_density.pct >= 15 else '#dc2626') }}">{{ analysis.content_audit.fact_density.pct }}%</div>
   <div style="font-size:8pt;color:#64748b;">可驗證事實佔比<br>（排除營銷宣傳語）</div>
@@ -198,7 +198,7 @@
 {% endif %}
 
 {% if analysis.content_audit.missing_content %}
-<h3>§1.3 缺失的關鍵內容類型</h3>
+<h3>3.3 缺失的關鍵內容類型</h3>
 <table>
   <tr><th>內容類型</th><th>影響程度</th><th>說明</th></tr>
   {% for m in analysis.content_audit.missing_content %}
@@ -216,7 +216,7 @@
 {% endif %}
 
 {% if analysis.content_audit.brand_consistency %}
-<h3>§1.4 品牌一致性</h3>
+<h3>3.4 品牌一致性</h3>
 {% if analysis.content_audit.brand_consistency.ok %}
 <p style="color:#16a34a;font-size:8.5pt;">✓ 品牌名稱在網站內使用一致。</p>
 {% else %}
@@ -230,92 +230,53 @@
 {% endif %}
 
 {% if analysis.content_audit.freshness %}
-<h3>§1.5 時效性信號</h3>
+<h3>3.5 時效性信號</h3>
 {% if analysis.content_audit.freshness.ok %}
-<p style="color:#16a34a;font-size:8.5pt;">✓ 網站時效性信號正常。{% if analysis.content_audit.freshness.last_updated_estimate %} 最後更新：{{ analysis.content_audit.freshness.last_updated_estimate }}{% endif %}</p>
+<p style="color:#16a34a;font-size:8.5pt;">✓ 網站時效性信號正常。</p>
 {% else %}
-<p style="color:#dc2626;font-size:8.5pt;">⚠ 網站時效性存在問題：</p>
 <ul style="font-size:8.5pt;color:#475569;">
   {% for issue in analysis.content_audit.freshness.issues %}
-  <li>{{ issue }}</li>
+  <li>⚠ {{ issue }}</li>
   {% endfor %}
 </ul>
-{% if analysis.content_audit.freshness.last_updated_estimate %}
-<p style="font-size:7.5pt;color:#94a3b8;">預計最後更新：{{ analysis.content_audit.freshness.last_updated_estimate }}</p>
 {% endif %}
-{% endif %}
-{% endif %}
-
-{% if analysis.content_audit.schema_assessment %}
-<h3>§1.6 Schema 標記評估</h3>
-{% if analysis.content_audit.schema_assessment.detected %}
-<p style="color:#16a34a;font-size:8.5pt;">✓ 檢測到 Schema 標記：{{ analysis.content_audit.schema_assessment.types_found|join(', ') }}</p>
-{% else %}
-<p style="color:#dc2626;font-size:8.5pt;">⚠ 未檢測到 Schema 結構化數據。</p>
-{% endif %}
-<p style="font-size:8pt;color:#64748b;">{{ analysis.content_audit.schema_assessment.note }}</p>
 {% endif %}
 {% endif %}
 
 <!-- SCORING (LLM) -->
 {% if analysis.scoring %}
 <div class="page-break"></div>
-<h2>§2 五大指標評分</h2>
-<p style="font-size:8pt;color:#94a3b8;margin-bottom:8pt;">權重分配：搜尋意圖匹配度 25% · 內容可引用度 25% · 權威資產儲備 20% · 可見度表現 20% · 品牌一致性 10%</p>
-<div style="margin-bottom:10pt;">
-  <div class="score-bar" style="height:10pt;border-radius:5pt;position:relative;">
-    {% set ws = analysis.scoring.intent_match.score * 0.25 + analysis.scoring.citeability.score * 0.25 + analysis.scoring.authority.score * 0.20 + analysis.scoring.visibility.score * 0.20 + analysis.scoring.consistency.score * 0.10 %}
-    <div class="score-bar-fill {{ 'green' if ws >= 60 else ('amber' if ws >= 30 else 'red') }}" style="width:{{ ws }}%;height:10pt;border-radius:5pt;"></div>
-  </div>
-  <div style="text-align:right;font-size:8pt;color:#94a3b8;margin-top:2pt;">綜合加權分數：<strong style="color:{{ '#16a34a' if ws >= 60 else ('#d97706' if ws >= 30 else '#dc2626') }};">{{ "%.0f"|format(ws) }}/100</strong></div>
-</div>
+<h2>4. 五大指標評分</h2>
 
 {% set dims = [
-  ('intent_match', '意圖匹配', 25),
-  ('citeability', '可引用度', 25),
-  ('authority', '權威資產', 20),
-  ('visibility', '可見度', 20),
-  ('consistency', '一致性', 10),
+  ('intent_match', '搜尋意圖匹配度', 25),
+  ('citeability', '內容可引用度', 25),
+  ('authority', '權威資產儲備', 20),
+  ('technical', '技術 SEO 基礎', 15),
+  ('trust', '信任信號', 15),
 ] %}
 {% for key, label, weight in dims %}
 {% if analysis.scoring[key] %}
-<div class="score-card" style="width:18%;margin:0 1% 8pt 0;">
-  <div style="font-size:7.5pt;font-weight:600;">{{ label }} <span style="color:#94a3b8;">({{ weight }}%)</span></div>
-  <div style="font-size:14pt;font-weight:700;color:{{ '#16a34a' if analysis.scoring[key].score >= 60 else ('#d97706' if analysis.scoring[key].score >= 30 else '#dc2626') }}">{{ analysis.scoring[key].score }}/100</div>
+<div class="score-card">
+  <div style="font-size:8.5pt;font-weight:600;">{{ label }} <span style="color:#94a3b8;">({{ weight }}%)</span></div>
+  <div style="font-size:16pt;font-weight:700;color:{{ '#16a34a' if analysis.scoring[key].score >= 60 else ('#d97706' if analysis.scoring[key].score >= 30 else '#dc2626') }}">{{ analysis.scoring[key].score }}/100</div>
   <div class="score-bar"><div class="score-bar-fill {{ 'green' if analysis.scoring[key].score >= 60 else ('amber' if analysis.scoring[key].score >= 30 else 'red') }}" style="width:{{ analysis.scoring[key].score }}%;"></div></div>
-  <div style="font-size:6.5pt;color:#64748b;margin-top:3pt;">{{ analysis.scoring[key].get('breakdown', analysis.scoring[key].get('note', '')) }}</div>
+  <div style="font-size:7pt;color:#64748b;margin-top:3pt;">{{ analysis.scoring[key].note }}</div>
 </div>
 {% endif %}
 {% endfor %}
 {% endif %}
 
-<!-- COMPETITOR ANALYSIS (LLM) -->
-{% if analysis.competitor_analysis %}
-<div class="page-break"></div>
-<h2>§3 競爭者分析</h2>
-{% if analysis.competitor_analysis.overview %}
-<p class="prose" style="font-size:9pt;color:#475569;margin-bottom:8pt;">{{ analysis.competitor_analysis.overview }}</p>
-{% endif %}
-{% for c in analysis.competitor_analysis.per_competitor %}
-<div style="border:1pt solid #e2e8f0;border-radius:6pt;padding:8pt 10pt;margin-bottom:8pt;page-break-inside:avoid;">
-  <h3 style="margin:0 0 4pt;font-size:9pt;">{{ c.name }}</h3>
-  <table>
-    <tr><th style="width:60pt;">優勢</th><td style="font-size:7.5pt;">{% for s in c.strengths %}{{ s }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td></tr>
-    <tr><th>弱點</th><td style="font-size:7.5pt;">{% for w in c.weaknesses %}{{ w }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td></tr>
-    {% if c.opportunity %}
-    <tr><th>機會</th><td style="font-size:7.5pt;color:#4f46e5;">{{ c.opportunity }}</td></tr>
-    {% endif %}
-  </table>
-</div>
-{% endfor %}
-{% elif analysis.competitor_insights %}
-<h2>§3 競爭者分析</h2>
+<!-- COMPETITOR INSIGHTS (LLM) -->
+{% if analysis.competitor_insights %}
+<h2>5. 競爭者分析</h2>
 <p class="prose" style="font-size:9pt;color:#475569;">{{ analysis.competitor_insights }}</p>
 {% endif %}
 
-<!-- CITATIONS + ENGINE -->
+<!-- CITATIONS -->
 {% if visibility.top_domains %}
-<h2>§4 引用來源分析</h2>
+<h2>6. 引用來源分析</h2>
+<h3>熱門引用網域</h3>
 <table>
   <tr><th>網域</th><th>類別</th><th>引用次數</th></tr>
   {% for d in visibility.top_domains[:15] %}
@@ -326,13 +287,14 @@
   </tr>
   {% endfor %}
 </table>
+
 {% if visibility.top_urls %}
 <h3>熱門引用頁面</h3>
 <table>
   <tr><th>URL</th><th>網域</th><th>引用次數</th></tr>
   {% for u in visibility.top_urls[:10] %}
   <tr>
-    <td style="max-width:160pt;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ u.url }}</td>
+    <td style="max-width:180pt;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ u.url }}</td>
     <td>{{ u.domain }}</td>
     <td>{{ u.n }}</td>
   </tr>
@@ -341,124 +303,13 @@
 {% endif %}
 {% endif %}
 
-<!-- PLATFORM ANALYSIS (LLM) -->
-{% if analysis.platform_analysis %}
-<h2>§5 平台分析</h2>
-{% if analysis.platform_analysis.overview %}
-<p class="prose" style="font-size:9pt;color:#475569;margin-bottom:8pt;">{{ analysis.platform_analysis.overview }}</p>
-{% endif %}
-{% for e in analysis.platform_analysis.engines %}
-<div style="border:1pt solid #e2e8f0;border-radius:6pt;padding:7pt 10pt;margin-bottom:5pt;page-break-inside:avoid;">
-  <strong style="font-size:8.5pt;">{{ e.name }}</strong>
-  <span style="font-size:7.5pt;color:#64748b;">— {{ e.assessment }}</span>
-  <br><span style="font-size:7.5pt;color:#4f46e5;">💡 {{ e.recommendation }}</span>
-</div>
-{% endfor %}
-{% endif %}
-
-<!-- THIRD-PARTY SIGNALS (LLM) -->
-{% if analysis.third_party_signals %}
-<h2>§6 第三方信號</h2>
-<p style="font-size:8pt;color:#64748b;margin-bottom:6pt;">{{ analysis.third_party_signals.get('note', '以下項目建議手動審計：') }}</p>
-{% for item in analysis.third_party_signals.get('checklist', []) %}
-<div style="font-size:8pt;margin-bottom:2pt;">☐ {{ item }}</div>
-{% endfor %}
-{% endif %}
-
-<!-- ENGINE DISTRIBUTION -->
-{% if visibility.engines %}
-<h2>§7 引擎分佈</h2>
-<table>
-  <tr><th>引擎</th><th>評估次數</th><th>佔比</th></tr>
-  {% for e in visibility.engines %}
-  {% set share = (e.n / visibility.runs * 100) if visibility.runs else 0 %}
-  <tr>
-    <td>{{ e.name }}</td>
-    <td>{{ e.n }}</td>
-    <td>{{ "%.0f"|format(share) }}%</td>
-  </tr>
-  {% endfor %}
-</table>
-{% endif %}
-
 <!-- RECOMMENDATIONS (LLM) -->
 {% if analysis.recommendations %}
 <div class="page-break"></div>
-<h2>§8 優化路線圖</h2>
+<h2>7. 優化路線圖</h2>
 
-{% for tier, label, cls in [('immediate','🚨 即時行動 (0-30 天)','immediate'),('short_term','🟠 短期優化 (1-3 個月)','short_term'),('long_term','🔵 長期策略 (3-12 個月)','long_term')] %}
-{% set items = analysis.recommendations.get(tier, []) if analysis.recommendations.get(tier) is iterable and analysis.recommendations.get(tier) is not string else (analysis.recommendations.get(tier, {}).get('items', []) if analysis.recommendations.get(tier) is mapping else []) %}
-{% if items %}
-<h3>{{ label }}</h3>
-{% for r in items %}
-<div class="rec-card {{ cls }}">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3pt;">
-    <span></span>
-    <span style="font-size:7pt;color:#94a3b8;">
-      努力：<span class="badge {{ 'high' if r.effort == 'high' else ('medium' if r.effort == 'medium' else 'low') }}">{{ r.effort }}</span>
-      影響：<span class="badge {{ 'high' if r.impact == 'high' else ('medium' if r.impact == 'medium' else 'low') }}">{{ r.impact }}</span>
-    </span>
-  </div>
-  <p style="font-size:8.5pt;margin:0;color:#334155;">{{ r.action }}</p>
-</div>
-{% endfor %}
-{% endif %}
-{% endfor %}
-
-{% if analysis.recommendations.effort_impact_matrix %}
-{% set m = analysis.recommendations.effort_impact_matrix %}
-<h3>§8.4 努力-影響矩陣</h3>
-<div style="display:flex;gap:8pt;flex-wrap:wrap;">
-  <div style="flex:1;min-width:140pt;background:#f0fdf4;border:1pt solid #bbf7d0;border-radius:6pt;padding:8pt;">
-    <div style="font-size:7.5pt;font-weight:600;color:#16a34a;">⚡ Quick Wins</div>
-    {% for w in m.quick_wins %}<div style="font-size:7pt;color:#475569;">• {{ w }}</div>{% endfor %}
-  </div>
-  <div style="flex:1;min-width:140pt;background:#eff6ff;border:1pt solid #bfdbfe;border-radius:6pt;padding:8pt;">
-    <div style="font-size:7.5pt;font-weight:600;color:#2563eb;">🎯 Major Projects</div>
-    {% for w in m.major_projects %}<div style="font-size:7pt;color:#475569;">• {{ w }}</div>{% endfor %}
-  </div>
-  <div style="flex:1;min-width:140pt;background:#fffbeb;border:1pt solid #fde68a;border-radius:6pt;padding:8pt;">
-    <div style="font-size:7.5pt;font-weight:600;color:#d97706;">📋 Fill-ins</div>
-    {% for w in m.fill_ins %}<div style="font-size:7pt;color:#475569;">• {{ w }}</div>{% endfor %}
-  </div>
-  <div style="flex:1;min-width:140pt;background:#fef2f2;border:1pt solid #fecaca;border-radius:6pt;padding:8pt;">
-    <div style="font-size:7.5pt;font-weight:600;color:#dc2626;">⏸ Money Pits</div>
-    {% for w in m.money_pits %}<div style="font-size:7pt;color:#475569;">• {{ w }}</div>{% endfor %}
-  </div>
-</div>
-{% endif %}
-
-{% if analysis.recommendations.content_templates %}
-<h3>§8.5 內容模板建議</h3>
-{% for t in analysis.recommendations.content_templates %}
-<div style="border:1pt solid #e2e8f0;border-radius:6pt;padding:8pt 10pt;margin-bottom:5pt;page-break-inside:avoid;">
-  <div style="font-size:8pt;font-weight:600;margin-bottom:4pt;">{{ t.type }}：{{ t.headline }}</div>
-  <ol style="margin:0;padding-left:16pt;font-size:7.5pt;color:#475569;">
-    {% for b in t.structure %}<li>{{ b }}</li>{% endfor %}
-  </ol>
-</div>
-{% endfor %}
-{% endif %}
-
-{% if analysis.recommendations.monitoring and analysis.recommendations.monitoring.metrics %}
-<h3>§8.6 監控框架</h3>
-<table>
-  <tr><th>指標</th><th>工具</th><th>頻率</th></tr>
-  {% for m in analysis.recommendations.monitoring.metrics %}
-  <tr>
-    <td>{{ m.name }}</td>
-    <td><span class="tag">{{ m.tool }}</span></td>
-    <td>{{ m.frequency }}</td>
-  </tr>
-  {% endfor %}
-</table>
-{% endif %}
-
-{% elif analysis.recommendations is iterable and analysis.recommendations is not string %}
-<div class="page-break"></div>
-<h2>§8 優化路線圖</h2>
 {% for r in analysis.recommendations %}
-<div class="rec-card {{ r.priority }}">
+<div class="rec-card {{ r.priority|replace('immediate','immediate')|replace('short_term','short_term')|replace('long_term','long_term') }}">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3pt;">
     <span>
       {% if r.priority == 'immediate' %}<span class="badge red">即時</span>
@@ -475,27 +326,17 @@
 {% endfor %}
 {% endif %}
 
-<!-- APPENDICES -->
-<div class="page-break"></div>
-<h2>附錄</h2>
-
-<h3>A. 已爬取頁面 URL</h3>
-<p style="font-size:7.5pt;color:#94a3b8;margin-bottom:4pt;">Content Studio 爬取的 {{ (pages_by_site.values()|list)|map('length')|sum }} 個頁面：</p>
-{% for domain, pages in pages_by_site.items() %}
-<h3 style="font-size:8pt;">{{ domain }}</h3>
-{% for p in pages[:50] %}
-<div style="font-size:7pt;color:#64748b;margin-bottom:1pt;">{{ p.url }}</div>
-{% endfor %}
-{% endfor %}
-
-{% if visibility.all_prompt_rows %}
-<h3>B. 追蹤提問列表</h3>
+<!-- ENGINE DISTRIBUTION -->
+{% if visibility.engines %}
+<h2>8. 引擎分佈</h2>
 <table>
-  <tr><th>提問</th><th>評估數</th></tr>
-  {% for p in visibility.all_prompt_rows[:30] %}
+  <tr><th>引擎</th><th>評估次數</th><th>佔比</th></tr>
+  {% for e in visibility.engines %}
+  {% set share = (e.n / visibility.runs * 100) if visibility.runs else 0 %}
   <tr>
-    <td>{{ p.text[:100] }}</td>
-    <td>{{ p.runs }}</td>
+    <td>{{ e.name }}</td>
+    <td>{{ e.n }}</td>
+    <td>{{ "%.0f"|format(share) }}%</td>
   </tr>
   {% endfor %}
 </table>
