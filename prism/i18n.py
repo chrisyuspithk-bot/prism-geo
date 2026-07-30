@@ -213,6 +213,9 @@ STRINGS = {
     "citations_section": {"zh-TW": "引用來源", "en": "Citations"},
     "mentions_section": {"zh-TW": "提及", "en": "Mentions"},
     "no_runs": {"zh-TW": "尚無評估記錄。", "en": "No runs recorded yet."},
+    "prev": {"zh-TW": "← 上一頁", "en": "← Prev"},
+    "next": {"zh-TW": "下一頁 →", "en": "Next →"},
+    "page_of": {"zh-TW": "第 {page} 頁，共 {total} 頁", "en": "Page {page} of {total}"},
 
     # --- language switcher ---
     "language": {"zh-TW": "語言", "en": "Language"},

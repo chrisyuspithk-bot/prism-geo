@@ -39,23 +39,36 @@
   </div>
   <div class="rounded-xl border border-slate-200 bg-white">
     <h2 class="border-b border-slate-100 px-5 py-4 font-semibold">{{ t('citations_section') }}</h2>
-    <table class="w-full text-sm">
-      <tbody>
-        {% for c in data.citations %}
-        <tr class="border-b border-slate-100 last:border-0">
-          <td class="max-w-0 truncate px-5 py-2.5"><a href="{{ c.url }}" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">{{ c.url }}</a></td>
-          <td class="px-5 py-2.5 text-right text-slate-500">{{ c.n }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    {% if data.citations %}
+    <div id="citations-list">
+      <table class="w-full text-sm">
+        <tbody>
+          {% for c in data.citations %}
+          <tr class="border-b border-slate-100 last:border-0 citation-row" data-index="{{ loop.index0 }}">
+            <td class="max-w-0 truncate px-5 py-2.5"><a href="{{ c.url }}" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">{{ c.url }}</a></td>
+            <td class="px-5 py-2.5 text-right text-slate-500 w-16">{{ c.n }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div id="citations-pager" class="hidden flex items-center justify-between border-t border-slate-100 px-5 py-2 text-xs text-slate-500">
+      <button onclick="pager.prev('citations')" class="hover:text-indigo-600 disabled:opacity-30 disabled:cursor-default">{{ t('prev') }}</button>
+      <span id="citations-page-info"></span>
+      <button onclick="pager.next('citations')" class="hover:text-indigo-600 disabled:opacity-30 disabled:cursor-default">{{ t('next') }}</button>
+    </div>
+    {% else %}
+    <p class="px-5 py-8 text-center text-sm text-slate-400">{{ t('no_runs') }}</p>
+    {% endif %}
   </div>
 </div>
 
 <h2 class="mb-3 mt-8 font-semibold">{{ t('response_log') }}</h2>
+{% if data.runs %}
+<div id="runs-list">
 <div class="space-y-4">
   {% for r in data.runs %}
-  <details id="run-{{ r.id }}" class="rounded-xl border border-slate-200 bg-white" {{ 'open' if loop.first }}>
+  <details id="run-{{ r.id }}" class="run-item rounded-xl border border-slate-200 bg-white" data-index="{{ loop.index0 }}">
     <summary class="cursor-pointer px-5 py-3 text-sm text-slate-500 hover:text-slate-700">
       <span class="font-medium text-slate-700">{{ r.model_name }}</span> · {{ r.ran_at }} ·
       {% if r.status == 'ok' %}<span class="text-emerald-600">ok</span>{% else %}<span class="text-rose-500">error</span>{% endif %}
@@ -65,4 +78,48 @@
   </details>
   {% endfor %}
 </div>
+</div>
+<div id="runs-pager" class="hidden flex items-center justify-between mt-4 text-xs text-slate-500">
+  <button onclick="pager.prev('runs')" class="hover:text-indigo-600 disabled:opacity-30 disabled:cursor-default">{{ t('prev') }}</button>
+  <span id="runs-page-info"></span>
+  <button onclick="pager.next('runs')" class="hover:text-indigo-600 disabled:opacity-30 disabled:cursor-default">{{ t('next') }}</button>
+</div>
+{% else %}
+<p class="text-sm text-slate-400">{{ t('no_runs') }}</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const CITATIONS_PER = 10, RUNS_PER = 5;
+
+  function setup(name, items, per) {
+    if (items.length <= per) return;
+    var pagerEl = document.getElementById(name + '-pager');
+    var infoEl  = document.getElementById(name + '-page-info');
+    pagerEl.classList.remove('hidden');
+
+    var page = 0, total = Math.ceil(items.length / per);
+    var pt = '{{ t("page_of", page="{page}", total="{total}") }}';
+
+    function show() {
+      items.forEach(function(el, i) {
+        el.style.display = (i >= page * per && i < (page + 1) * per) ? '' : 'none';
+      });
+      infoEl.textContent = pt.replace('{page}', page + 1).replace('{total}', total);
+    }
+
+    window.pager = window.pager || {};
+    window.pager[name] = {
+      prev: function() { if (page > 0) { page--; show(); } },
+      next: function() { if (page < total - 1) { page++; show(); } },
+    };
+    show();
+  }
+
+  setup('citations', document.querySelectorAll('.citation-row'), CITATIONS_PER);
+  setup('runs',      document.querySelectorAll('.run-item'),     RUNS_PER);
+})();
+</script>
 {% endblock %}
