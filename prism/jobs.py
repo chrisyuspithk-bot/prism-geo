@@ -82,6 +82,11 @@ async def _do_run_all(job_id: int, tenant_id: int) -> None:
                         run_prompt(pid, engine=engine, job_id=job_id), timeout=STEP_TIMEOUT)
                     with connect() as conn:
                         status = q1(conn, "SELECT status FROM runs WHERE id = ?", (run_id,))["status"]
+                except asyncio.TimeoutError:
+                    status = "error"
+                    with connect() as conn:
+                        _append_log(conn, job_id,
+                                    f"prompt {pid} [{engine['name']}]: timed out after {STEP_TIMEOUT}s")
                 except Exception as exc:
                     status = "error"
                     with connect() as conn:
