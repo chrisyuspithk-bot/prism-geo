@@ -385,6 +385,7 @@ STRINGS = {
     "engine_gemini_desc": {"zh-TW": "Gemini — Google 原生 API", "en": "Gemini — Google's native API"},
     "engine_perplexity_desc": {"zh-TW": "Perplexity — Sonar API", "en": "Perplexity — Sonar API"},
     "engine_deepseek_desc": {"zh-TW": "DeepSeek — 經濟實惠的 OpenAI 相容聊天模型", "en": "DeepSeek — affordable OpenAI-compatible chat model"},
+    "url_col": {"zh-TW": "URL", "en": "URL"},
 }
 
 

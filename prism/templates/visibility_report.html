@@ -129,7 +129,7 @@
 
 <h3>{{ t('top_cited_pages') }}</h3>
 <table>
-  <tr><th>URL</th><th>{{ t('brand_col') }}</th><th class="num">{{ t('citations') }}</th></tr>
+  <tr><th>{{ t('url_col') }}</th><th>{{ t('brand_col') }}</th><th class="num">{{ t('citations') }}</th></tr>
   {% for u in top_urls %}
   <tr><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ u.url }}</td><td>{{ u.domain }}</td><td class="num">{{ u.n }}</td></tr>
   {% endfor %}
