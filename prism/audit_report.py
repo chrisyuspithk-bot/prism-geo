@@ -2,8 +2,6 @@
 with visibility tracking data and LLM-generated insights. Produces PDF-ready HTML.
 """
 
-import json
-import re
 from datetime import datetime, timezone
 
 import httpx
@@ -11,44 +9,99 @@ import httpx
 from . import keystore, queries
 from .db import connect
 
-AUDIT_SYSTEM = """\
-You are a GEO (Generative Engine Optimization) auditor. You analyze a brand's
-website content against AI visibility data to produce a professional audit
-report. You are direct, data-specific, and never use generic praise.
+_AUDIT_EN = """\
+You are an expert GEO (Generative Engine Optimization) report generator.
 
-For each section, reference specific page URLs, content facts, competitor names,
-and visibility metrics from the provided data.
+Your task is to produce a clear, professional, and highly actionable GEO audit report using ONLY the data provided to you. Do not invent any numbers, pages, scores, findings, or recommendations that are not supported by the given data.
 
-{lang_instruction}
+### Instructions
 
-Return your analysis as a JSON object with these keys:
-- "executive_summary": 2-3 paragraph overall assessment
-- "content_audit": {{
-    "page_inventory": [{{ "url": "...", "title": "...", "category": "product|about|blog|service|landing|other", "quality": "good|medium|thin", "note": "1-line assessment" }}],
-    "fact_density": {{ "pct": 0-100, "assessment": "1 paragraph about verifiable facts vs fluff" }},
-    "missing_content": [{{ "type": "FAQ|case_studies|comparison_guides|testimonials|pricing|tech_specs|white_papers|schema", "severity": "high|medium|low", "note": "why it matters" }}],
-    "brand_consistency": {{ "ok": true/false, "issues": ["list of inconsistencies found"] }},
-    "freshness": {{ "ok": true/false, "issues": ["outdated copyright", "stale blog", "no dates", etc.] }}
-  }},
-- "scoring": {{
-    "intent_match": {{ "score": 0-100, "note": "1 sentence" }},
-    "citeability": {{ "score": 0-100, "note": "1 sentence" }},
-    "authority": {{ "score": 0-100, "note": "1 sentence" }},
-    "technical": {{ "score": 0-100, "note": "1 sentence" }},
-    "trust": {{ "score": 0-100, "note": "1 sentence" }}
-  }},
-- "competitor_insights": "1-2 paragraph analysis of competitor positioning vs the brand",
-- "recommendations": [{{ "priority": "immediate|short_term|long_term", "action": "specific 1-sentence action item", "effort": "low|medium|high", "impact": "high|medium|low" }}]
-}}"""
+1. Carefully read all the data supplied in the current context.
 
-_LANG_INSTRUCTIONS = {
-    "zh-TW": "IMPORTANT: You MUST write ALL text values in Traditional Chinese (繁體中文). "
-             "Every note, assessment, executive_summary, competitor_insights, action, "
-             "and all other text fields must be in Chinese. Only JSON keys and enum values "
-             "(good/medium/thin, high/medium/low, immediate/short_term/long_term, "
-             "product/about/blog/service/landing/other, FAQ/case_studies/etc.) remain in English.",
-    "en": "Write all text values in English.",
-}
+2. Generate a complete GEO report in clean markdown.
+
+3. Follow this exact structure:
+
+   - Title and metadata
+
+   - Executive Summary (highlight the core gap between the brand's real authority and its AI visibility)
+
+   - AI Visibility Baseline (include tables for prompt-level performance and Share of Voice if the data contains them)
+
+   - Website Content Diagnosis (group issues by severity: High / Medium, and list concrete examples from the data)
+
+   - Metric Scores (if scores are provided, keep the original numbers and add a short interpretation for each)
+
+   - Prioritized Action Roadmap
+
+     - This week (low effort, high impact)
+
+     - Next 2–4 weeks
+
+     - Medium-term
+
+     Every recommendation must be specific and directly executable based on the given data.
+
+   - Competitive Context (short)
+
+   - Conclusion and suggested next measurement step
+
+### Strict Rules
+
+- Use only the information explicitly provided. Do not add external knowledge or assumptions.
+- Prioritize actionability and clarity.
+- Keep the tone factual and direct.
+- Output clean markdown only. Do not include any explanatory notes about your process.
+
+Generate the GEO report now based on the data provided."""
+
+_AUDIT_ZH = """\
+你是一位專業的 GEO（Generative Engine Optimization，生成式引擎優化）報告生成專家。
+
+你的任務是根據提供給你的資料，產出一份清晰、專業且高度可執行的 GEO 審計報告。禁止捏造任何數字、頁面、分數、發現或建議，所有內容必須有資料支持。
+
+### 指示
+
+1. 仔細閱讀當前上下文中提供的所有資料。
+
+2. 以乾淨的 Markdown 格式產出完整的 GEO 報告。
+
+3. 嚴格按照以下結構撰寫：
+
+   - 標題與基本資訊
+
+   - 執行摘要（重點指出品牌真實權威與 AI 可見度之間的落差）
+
+   - AI 可見度基線（若資料有提供，需包含提示詞表現表格與聲量佔比表格）
+
+   - 網站內容診斷（依嚴重程度分為「高」與「中」，並列出資料中的具體例子）
+
+   - 指標評分（若有提供分數，保留原始數字，並為每個指標加上簡短解釋）
+
+   - 優先優化路線圖
+
+     - 本週立即處理（低努力、高影響）
+
+     - 未來 2–4 週
+
+     - 中期
+
+     每一項建議都必須具體且可直接執行，並完全基於提供的資料。
+
+   - 競爭格局簡述
+
+   - 結論與下一步量測建議
+
+### 嚴格規則
+
+- 只能使用明確提供的資料，禁止加入外部知識或任何假設。
+- 優先考慮可執行性與清晰度。
+- 語氣保持事實、直接。
+- 只輸出乾淨的 Markdown 內容，不要加入任何關於你思考過程的說明。
+
+現在根據提供的資料生成 GEO 報告。"""
+
+_AUDIT_SYSTEMS = {"en": _AUDIT_EN, "zh-TW": _AUDIT_ZH}
 
 # Audit report template strings — keyed by language
 _T = {
@@ -303,7 +356,7 @@ def _build_content_summary(pages: list[dict], max_per_site: int = 30) -> str:
 
 
 def _call_llm(api_key: str, base_url: str, model: str, prompt: str,
-              system: str | None = None) -> str:
+              system: str = "") -> str:
     """Make an LLM call, return text response."""
     url = base_url.rstrip("/")
     if not url.endswith("/chat/completions"):
@@ -314,7 +367,7 @@ def _call_llm(api_key: str, base_url: str, model: str, prompt: str,
         json={
             "model": model,
             "messages": [
-                {"role": "system", "content": system or AUDIT_SYSTEM},
+                {"role": "system", "content": system},
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.5,
@@ -327,123 +380,146 @@ def _call_llm(api_key: str, base_url: str, model: str, prompt: str,
     return resp.json()["choices"][0]["message"]["content"]
 
 
-def _parse_llm_json(text: str) -> dict:
-    """Extract JSON object from LLM response (may have markdown fences)."""
-    text = text.strip()
-    # Try code-fenced JSON first: ```json ... ``` or ``` ... ```
-    m = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", text)
-    if m:
-        try:
-            return json.loads(m.group(1))
-        except json.JSONDecodeError:
-            pass
-    # Try bare JSON — find the outermost balanced { } pair
-    start = text.find("{")
-    if start == -1:
-        return {"error": "Failed to parse LLM response", "raw": text[:500]}
-    depth = 0
-    end = -1
-    for i, ch in enumerate(text[start:], start):
-        if ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                end = i + 1
-                break
-    if end > start:
-        try:
-            return json.loads(text[start:end])
-        except json.JSONDecodeError:
-            pass
-    return {"error": "Failed to parse LLM response", "raw": text[:500]}
+def _build_vis_summary(vis: dict | None, competitors: list) -> str:
+    """Build a structured text summary of visibility data for the LLM prompt."""
+    if not vis:
+        return "(No visibility data available.)"
+
+    lines = [
+        f"Overall brand visibility: {vis.get('visibility', 0):.0f}%",
+        f"Prompts tracked: {vis.get('prompts_count', 0)}",
+        f"Total evaluations: {vis.get('runs', 0)}",
+        f"Total citations: {vis.get('citations', 0)}",
+        f"Competitors: {', '.join(c['name'] for c in competitors)}",
+        "",
+    ]
+
+    # Prompt-level visibility
+    prompt_rows = vis.get("prompt_rows", []) or []
+    if prompt_rows:
+        lines.append("=== Prompt Visibility ===")
+        for p in prompt_rows:
+            tags = f" [{p.get('tags', '')}]" if p.get("tags") else ""
+            lines.append(
+                f"  \"{p['text'][:100]}\"{tags} — "
+                f"{p.get('runs', 0)} evaluations, {p.get('visibility', 0):.0f}% visibility"
+            )
+        lines.append("")
+
+    # Share of voice
+    sov = vis.get("sov", []) or []
+    if sov:
+        lines.append("=== Share of Voice ===")
+        total = vis.get("total_mentions", 0)
+        for s in sov[:10]:
+            share = (s["mentions"] / total * 100) if total else 0
+            marker = " ← YOUR BRAND" if s["name"] == vis.get("brand_name", "") else ""
+            lines.append(
+                f"  {s['name']}: {s['mentions']} mentions ({share:.0f}% share), "
+                f"avg position {s.get('avg_pos', '—')}{marker}"
+            )
+        lines.append("")
+
+    # Growth opportunities / gaps
+    gaps = vis.get("gaps", []) or []
+    if gaps:
+        lines.append("=== Growth Opportunities (competitors present, you absent) ===")
+        for g in gaps:
+            lines.append(f"  \"{g['text'][:100]}\" — competitors: {g['competitors']}")
+        lines.append("")
+
+    # Top citation domains
+    top_domains = vis.get("top_domains", []) or []
+    if top_domains:
+        lines.append("=== Top Citation Domains ===")
+        for d in top_domains[:15]:
+            lines.append(f"  {d['domain']} ({d.get('category', '')}): {d['n']} citations")
+        lines.append("")
+
+    # Top cited pages
+    top_urls = vis.get("top_urls", []) or []
+    if top_urls:
+        lines.append("=== Top Cited Pages ===")
+        for u in top_urls[:10]:
+            lines.append(f"  {u['url'][:120]} ({u.get('domain', '')}): {u['n']} citations")
+        lines.append("")
+
+    # Engine distribution
+    engines = vis.get("engines", []) or []
+    if engines:
+        lines.append("=== Engine Distribution ===")
+        for e in engines:
+            lines.append(f"  {e['name']}: {e['n']} evaluations")
+        lines.append("")
+
+    return "\n".join(lines)
 
 
 def analyze(tenant_id: int, days: int = 30, lang: str = "zh-TW") -> dict:
-    """Run the full audit analysis. Returns complete data dict for template rendering."""
+    """Run the full audit analysis. Returns data dict with 'markdown' key for the report."""
     data = build_audit_data(tenant_id, days)
     if data is None:
         return {"error": "No brand configured for this tenant."}
     data["lang"] = lang
-    data["tr"] = lambda k, **fmt: _T.get(lang, _T["en"])[k].format(**fmt) if fmt else _T.get(lang, _T["en"])[k]
+    tr_lang = _T.get(lang, _T["en"])
+    data["tr"] = lambda k, **fmt: tr_lang[k].format(**fmt) if fmt else tr_lang[k]
 
     api_key, base_url, model = _get_llm()
     if not api_key:
-        data["analysis"] = {"error": "No LLM API key configured."}
         data["no_llm"] = True
+        data["markdown"] = None
         return data
 
-    # Build content summary from all crawled sites
     all_pages = []
     for site_id, pages in data["pages_by_site"].items():
         all_pages.extend(pages)
 
     content_summary = _build_content_summary(all_pages)
+    vis_summary = _build_vis_summary(data["visibility"], data["competitors"])
 
-    # Build visibility summary
-    vis = data["visibility"]
-    vis_summary = ""
-    if vis:
-        vis_summary = (
-            f"Visibility: {vis.get('visibility', 0):.0f}%\n"
-            f"Prompts tracked: {vis.get('prompts_count', 0)}\n"
-            f"Evaluations: {vis.get('runs', 0)}\n"
-            f"Citations: {vis.get('citations', 0)}\n"
-            f"Competitors: {', '.join(c['name'] for c in data['competitors'])}\n"
-            f"Share of voice top brands: "
-            + ", ".join(
-                f"{s['name']} ({s['mentions']} mentions)"
-                for s in (vis.get("sov", []) or [])[:5]
-            )
-        )
+    system = _AUDIT_SYSTEMS.get(lang, _AUDIT_SYSTEMS["en"])
 
-    lang_instruction = _LANG_INSTRUCTIONS.get(lang, _LANG_INSTRUCTIONS["en"])
-    system = AUDIT_SYSTEM.format(lang_instruction=lang_instruction)
-
-    prompt = f"""Analyze this brand for a GEO audit report.
-
-BRAND: {data['brand']['name']}
-WEBSITE: {data['tenant'].get('website', '')}
-PAGES CRAWLED: {len(all_pages)}
+    prompt = f"""=== BRAND ===
+Name: {data['brand']['name']}
+Website: {data['tenant'].get('website', '')}
+Pages crawled: {len(all_pages)}
 
 === CRAWLED WEBSITE CONTENT ===
 {content_summary}
 
-=== AI VISIBILITY DATA ===
-{vis_summary}
-
-Analyze the website content and visibility data. Return JSON per the system prompt.
-Focus on: page quality, fact density, missing content types, brand consistency,
-freshness signals, five-dimension scoring, competitor insights, and recommendations.
-
-REMINDER: {lang_instruction}"""
+=== AI VISIBILITY TRACKING DATA ===
+{vis_summary}"""
 
     try:
-        llm_response = _call_llm(api_key, base_url, model, prompt, system)
-        analysis = _parse_llm_json(llm_response)
-        if analysis.get("error"):
-            print(f"[audit] LLM parse failed: {llm_response[:300]}", flush=True)
-        data["analysis"] = analysis
+        data["markdown"] = _call_llm(api_key, base_url, model, prompt, system)
     except Exception as e:
         print(f"[audit] LLM call failed: {e}", flush=True)
-        data["analysis"] = {"error": str(e)}
+        data["markdown"] = None
+        data["llm_error"] = str(e)
 
     return data
 
 
 def generate_pdf(tenant_id: int, days: int = 30, lang: str = "zh-TW") -> bytes | None:
-    """Generate PDF bytes for the audit report."""
-    from jinja2 import Environment, FileSystemLoader
+    """Generate PDF bytes for the audit report — markdown rendered as styled PDF."""
+    from markdown import markdown as md_to_html
 
     data = analyze(tenant_id, days, lang)
-    if data.get("error") and not data.get("analysis"):
+    if data.get("error"):
         return None
 
+    md_text = data.get("markdown")
+    if not md_text:
+        return None
+
+    body_html = md_to_html(md_text, extensions=["tables", "fenced_code"])
+
+    from jinja2 import Environment, FileSystemLoader
     env = Environment(loader=FileSystemLoader(
         str(__import__("pathlib").Path(__file__).resolve().parent / "templates")
     ))
     template = env.get_template("audit_report.html")
-    html_str = template.render(**data)
+    html_str = template.render(body=body_html, **data)
 
     from weasyprint import HTML
     return HTML(string=html_str).write_pdf()

@@ -801,35 +801,28 @@ _audit_jobs: dict[str, dict] = {}
 
 
 def _audit_worker(job_id: str, tenant_id: int, days: int, lang: str = "zh-TW"):
-    """Run audit generation in background, updating _audit_jobs with dummy progress."""
+    """Run audit generation in background, updating _audit_jobs with progress."""
     now = time.time()
     try:
         _audit_jobs[job_id] = {"progress": 5, "label": "正在讀取網站數據…" if lang == "zh-TW" else "Reading website data…", "done": False, "_ts": now}
 
+        # Check preconditions
         data = audit_report.build_audit_data(tenant_id, days)
         if data is None:
             _audit_jobs[job_id] = {"progress": 0, "label": "錯誤" if lang == "zh-TW" else "Error", "done": True, "error": "無品牌數據" if lang == "zh-TW" else "No brand data", "_ts": now}
             return
 
-        api_key, base_url, model = audit_report._get_llm()
+        api_key, _, _ = audit_report._get_llm()
         if not api_key:
             _audit_jobs[job_id] = {"progress": 0, "label": "錯誤" if lang == "zh-TW" else "Error", "done": True, "error": "未設定 LLM API 金鑰" if lang == "zh-TW" else "No LLM API key configured", "_ts": now}
             return
 
-        # Run the analysis (single LLM call in the d0e0416 version)
         _audit_jobs[job_id] = {"progress": 20, "label": "分析網站內容與 AI 可見度…" if lang == "zh-TW" else "Analyzing website content & AI visibility…", "_ts": now}
-        data = audit_report.analyze(tenant_id, days, lang)
-        if data is None or data.get("error"):
+
+        pdf_bytes = audit_report.generate_pdf(tenant_id, days, lang)
+        if pdf_bytes is None:
             _audit_jobs[job_id] = {"progress": 0, "label": "錯誤" if lang == "zh-TW" else "Error", "done": True, "error": "分析失敗" if lang == "zh-TW" else "Analysis failed", "_ts": now}
             return
-
-        _audit_jobs[job_id] = {"progress": 80, "label": "生成 PDF 報告…" if lang == "zh-TW" else "Generating PDF report…", "_ts": now}
-        from weasyprint import HTML
-        from jinja2 import Environment, FileSystemLoader
-        env = Environment(loader=FileSystemLoader(str(BASE / "templates")))
-        template = env.get_template("audit_report.html")
-        html_str = template.render(**data)
-        pdf_bytes = HTML(string=html_str).write_pdf()
 
         _audit_jobs[job_id] = {"progress": 100, "label": "完成" if lang == "zh-TW" else "Done", "done": True, "pdf": pdf_bytes, "_ts": time.time()}
     except Exception as e:

@@ -6,56 +6,38 @@
 <style>
   @page { size: A4; margin: 2cm 1.8cm; @bottom-center { content: "Page " counter(page); font-size: 7.5pt; color: #94a3b8; } }
   body { font-family: 'WenQuanYi Micro Hei', 'Noto Sans CJK SC', 'Noto Sans CJK TC', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #1e293b; line-height: 1.55; }
-  h1 { font-size: 18pt; font-weight: 700; margin: 0 0 2pt; color: #0f172a; }
-  h2 { font-size: 12pt; font-weight: 600; border-bottom: 1.5pt solid #e2e8f0; padding-bottom: 4pt; margin: 22pt 0 10pt; color: #1e293b; page-break-after: avoid; }
-  h3 { font-size: 10pt; font-weight: 600; margin: 14pt 0 6pt; color: #334155; page-break-after: avoid; }
-  .subtitle { color: #64748b; font-size: 8.5pt; margin-bottom: 20pt; }
   .cover { text-align: center; padding-top: 120pt; page-break-after: always; }
-  .cover h1 { font-size: 24pt; }
+  .cover h1 { font-size: 24pt; font-weight: 700; margin: 0 0 2pt; color: #0f172a; }
   .cover .logo { font-size: 10pt; color: #6366f1; font-weight: 600; letter-spacing: 1pt; margin-bottom: 30pt; }
+  .cover .subtitle { color: #64748b; font-size: 8.5pt; margin-top: 8pt; }
   .methodology { background: #fefce8; border: 1pt solid #fde68a; border-radius: 6pt; padding: 10pt 12pt; margin-bottom: 18pt; font-size: 8.5pt; color: #92400e; page-break-inside: avoid; }
   .methodology strong { color: #78350f; }
 
-  .kpi-row { display: flex; gap: 12pt; margin-bottom: 18pt; page-break-inside: avoid; }
-  .kpi { flex: 1; border: 1pt solid #e2e8f0; border-radius: 8pt; padding: 10pt 12pt; text-align: center; }
-  .kpi-label { font-size: 7.5pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.5pt; }
-  .kpi-value { font-size: 20pt; font-weight: 700; }
-  .kpi-value.green { color: #16a34a; }
-  .kpi-value.amber { color: #d97706; }
-  .kpi-value.red { color: #dc2626; }
-  .kpi-value.indigo { color: #4f46e5; }
+  /* markdown content styles */
+  .report-body h1 { font-size: 18pt; font-weight: 700; margin: 22pt 0 10pt; color: #0f172a; page-break-after: avoid; }
+  .report-body h2 { font-size: 12pt; font-weight: 600; border-bottom: 1.5pt solid #e2e8f0; padding-bottom: 4pt; margin: 22pt 0 10pt; color: #1e293b; page-break-after: avoid; }
+  .report-body h3 { font-size: 10pt; font-weight: 600; margin: 14pt 0 6pt; color: #334155; page-break-after: avoid; }
+  .report-body h4 { font-size: 9.5pt; font-weight: 600; margin: 10pt 0 4pt; color: #475569; }
+  .report-body p { margin: 4pt 0 8pt; }
+  .report-body ul, .report-body ol { margin: 4pt 0 8pt; padding-left: 18pt; }
+  .report-body li { margin-bottom: 2pt; }
+  .report-body strong { color: #0f172a; }
+  .report-body code { background: #f1f5f9; padding: 1pt 4pt; border-radius: 3pt; font-size: 8.5pt; }
+  .report-body pre { background: #f8fafc; border: 1pt solid #e2e8f0; border-radius: 4pt; padding: 8pt 10pt; font-size: 8pt; overflow-x: auto; }
+  .report-body pre code { background: none; padding: 0; }
+  .report-body blockquote { border-left: 3pt solid #e2e8f0; padding-left: 10pt; color: #64748b; margin: 8pt 0; }
+  .report-body hr { border: none; border-top: 1pt solid #e2e8f0; margin: 16pt 0; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 10pt; page-break-inside: avoid; }
-  th { text-align: left; padding: 5pt 7pt; border-bottom: 2pt solid #e2e8f0; color: #64748b; font-weight: 600; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.3pt; }
-  td { padding: 4pt 7pt; border-bottom: 1pt solid #f1f5f9; }
-  tr:last-child td { border-bottom: none; }
-
-  .score-card { display: inline-block; width: 30%; vertical-align: top; padding: 8pt 10pt; margin: 0 1.5% 8pt 0; border: 1pt solid #e2e8f0; border-radius: 6pt; page-break-inside: avoid; }
-  .score-bar { height: 6pt; border-radius: 3pt; margin: 4pt 0; background: #f1f5f9; }
-  .score-bar-fill { height: 6pt; border-radius: 3pt; }
-  .score-bar-fill.green { background: #16a34a; }
-  .score-bar-fill.amber { background: #d97706; }
-  .score-bar-fill.red { background: #dc2626; }
-
-  .tag { display: inline-block; background: #f1f5f9; border-radius: 3pt; padding: 1pt 5pt; font-size: 7.5pt; color: #64748b; }
-  .badge { display: inline-block; border-radius: 10pt; padding: 1pt 7pt; font-size: 7.5pt; margin-right: 3pt; }
-  .badge.red { background: #fef2f2; color: #dc2626; }
-  .badge.amber { background: #fffbeb; color: #d97706; }
-  .badge.green { background: #f0fdf4; color: #16a34a; }
-  .badge.high { background: #fef2f2; color: #dc2626; }
-  .badge.medium { background: #fffbeb; color: #d97706; }
-  .badge.low { background: #f1f5f9; color: #64748b; }
-
-  .rec-card { border: 1pt solid #e2e8f0; border-radius: 6pt; padding: 8pt 10pt; margin-bottom: 6pt; page-break-inside: avoid; }
-  .rec-card.immediate { border-left: 3pt solid #dc2626; }
-  .rec-card.short_term { border-left: 3pt solid #d97706; }
-  .rec-card.long_term { border-left: 3pt solid #6366f1; }
-
-  .page-break { page-break-before: always; }
+  .report-body table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 10pt; page-break-inside: avoid; }
+  .report-body th { text-align: left; padding: 5pt 7pt; border-bottom: 2pt solid #e2e8f0; color: #64748b; font-weight: 600; font-size: 8pt; }
+  .report-body td { padding: 4pt 7pt; border-bottom: 1pt solid #f1f5f9; }
+  .report-body tr:last-child td { border-bottom: none; }
 
   .footer { margin-top: 24pt; border-top: 1pt solid #e2e8f0; padding-top: 8pt; font-size: 7pt; color: #94a3b8; text-align: center; }
-  .prose { white-space: pre-line; }
-  .check-cross { font-size: 10pt; }
+
+  {% if llm_error %}
+  .error-banner { background: #fef2f2; border: 1pt solid #fecaca; border-radius: 6pt; padding: 10pt 12pt; margin-bottom: 18pt; font-size: 8.5pt; color: #991b1b; }
+  {% endif %}
 </style>
 </head>
 <body>
@@ -78,269 +60,19 @@
   {{ tr('methodology_text', website=tenant.website or brand.name) }}
 </div>
 
-{% if analysis.error %}
-<div class="methodology" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;">
-  <strong>{{ tr('llm_failed') }}：</strong> {{ analysis.error }}
+{% if llm_error %}
+<div class="error-banner">
+  <strong>{{ tr('llm_failed') }}：</strong> {{ llm_error }}
   {% if no_llm %}
   <br>{{ tr('llm_no_key') }}
   {% endif %}
 </div>
 {% endif %}
 
-<!-- KPI ROW -->
-<h2>1. {{ tr('section_overview') }}</h2>
-<div class="kpi-row">
-  <div class="kpi">
-    <div class="kpi-label">{{ tr('kpi_visibility') }}</div>
-    <div class="kpi-value {{ 'green' if visibility.visibility|default(0) >= 60 else ('amber' if visibility.visibility|default(0) >= 25 else 'red') }}">{{ "%.0f"|format(visibility.visibility|default(0)) }}%</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">{{ tr('kpi_prompts') }}</div>
-    <div class="kpi-value indigo">{{ visibility.prompts_count|default(0) }}</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">{{ tr('kpi_runs') }}</div>
-    <div class="kpi-value indigo">{{ visibility.runs|default(0) }}</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">{{ tr('kpi_citations') }}</div>
-    <div class="kpi-value indigo">{{ visibility.citations|default(0) }}</div>
-  </div>
+<!-- LLM-GENERATED REPORT BODY -->
+<div class="report-body">
+{{ body | safe }}
 </div>
-
-{% if analysis.executive_summary %}
-<h3>{{ tr('executive_summary') }}</h3>
-<p class="prose" style="font-size:9pt;color:#475569;">{{ analysis.executive_summary }}</p>
-{% endif %}
-
-<!-- AI VISIBILITY BASELINE -->
-<h2>2. {{ tr('section_visibility') }}</h2>
-
-{% if visibility.prompt_rows %}
-<table>
-  <tr><th>{{ tr('prompt_col') }}</th><th>{{ tr('tags_col') }}</th><th>{{ tr('runs_col') }}</th><th>{{ tr('visibility_col') }}</th></tr>
-  {% for p in visibility.prompt_rows %}
-  <tr>
-    <td>{{ p.text[:80] }}</td>
-    <td><span class="tag">{{ p.tags or '' }}</span></td>
-    <td>{{ p.runs }}</td>
-    <td><strong>{{ "%.0f"|format(p.visibility) }}%</strong></td>
-  </tr>
-  {% endfor %}
-</table>
-{% else %}
-<p style="color:#94a3b8;font-size:8.5pt;">{{ tr('no_tracking_data') }}</p>
-{% endif %}
-
-{% if visibility.sov %}
-<h3>{{ tr('sov_title') }}</h3>
-<table>
-  <tr><th>{{ tr('brand_col') }}</th><th>{{ tr('mentions_col') }}</th><th>{{ tr('share_col') }}</th><th>{{ tr('avg_pos_col') }}</th></tr>
-  {% for s in visibility.sov[:10] %}
-  {% set share = (s.mentions / visibility.total_mentions * 100) if visibility.total_mentions else 0 %}
-  <tr>
-    <td><strong>{{ s.name }}</strong>{% if s.name == brand.name %} <span style="color:#4f46e5;font-size:7.5pt;">{{ tr('you_tag') }}</span>{% endif %}</td>
-    <td>{{ s.mentions }}</td>
-    <td>{{ "%.0f"|format(share) }}%</td>
-    <td>{{ "%.1f"|format(s.avg_pos) if s.avg_pos else '—' }}</td>
-  </tr>
-  {% endfor %}
-</table>
-{% endif %}
-
-{% if visibility.gaps %}
-<h3>{{ tr('gaps_title') }}</h3>
-<p style="font-size:8.5pt;color:#64748b;">{{ tr('gaps_desc', brand=brand.name) }}</p>
-{% for g in visibility.gaps %}
-<div style="margin-bottom:4pt;font-size:8.5pt;">
-  <strong>「{{ g.text[:80] }}」</strong> — {{ tr('competitors_present') }}：{{ g.competitors }}
-</div>
-{% endfor %}
-{% endif %}
-
-<!-- CONTENT AUDIT (LLM) -->
-{% if analysis.content_audit %}
-<div class="page-break"></div>
-<h2>3. {{ tr('section_content_audit') }}</h2>
-<p style="font-size:8.5pt;color:#64748b;margin-bottom:10pt;">
-  {{ tr('content_audit_desc', n=(pages_by_site.values()|list)|map('length')|sum) }}
-</p>
-
-{% if analysis.content_audit.page_inventory %}
-<h3>3.1 {{ tr('page_inventory') }}</h3>
-<table>
-  <tr><th>{{ tr('url_col') }}</th><th>{{ tr('title_col') }}</th><th>{{ tr('category_col') }}</th><th>{{ tr('quality_col') }}</th><th>{{ tr('assessment_col') }}</th></tr>
-  {% for p in analysis.content_audit.page_inventory[:25] %}
-  <tr>
-    <td style="max-width:140pt;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ p.url }}</td>
-    <td>{{ p.title[:50] if p.title else '—' }}</td>
-    <td><span class="tag">{{ p.category }}</span></td>
-    <td>
-      {% if p.quality == 'good' %}<span class="badge green">{{ tr('quality_good') }}</span>
-      {% elif p.quality == 'thin' %}<span class="badge red">{{ tr('quality_thin') }}</span>
-      {% else %}<span class="badge amber">{{ tr('quality_medium') }}</span>{% endif %}
-    </td>
-    <td style="font-size:7.5pt;color:#64748b;">{{ p.note[:80] }}</td>
-  </tr>
-  {% endfor %}
-</table>
-{% endif %}
-
-{% if analysis.content_audit.fact_density and analysis.content_audit.fact_density.pct is defined %}
-<h3>3.2 {{ tr('fact_density') }}</h3>
-<div style="display:flex;align-items:center;gap:10pt;margin-bottom:8pt;">
-  <div style="font-size:18pt;font-weight:700;color:{{ '#16a34a' if analysis.content_audit.fact_density.pct >= 40 else ('#d97706' if analysis.content_audit.fact_density.pct >= 15 else '#dc2626') }}">{{ analysis.content_audit.fact_density.pct }}%</div>
-  <div style="font-size:8pt;color:#64748b;">{{ tr('fact_density_label') }}</div>
-</div>
-{% if analysis.content_audit.fact_density.assessment %}
-<p class="prose" style="font-size:8.5pt;color:#475569;">{{ analysis.content_audit.fact_density.assessment }}</p>
-{% endif %}
-{% endif %}
-
-{% if analysis.content_audit.missing_content %}
-<h3>3.3 {{ tr('missing_content') }}</h3>
-<table>
-  <tr><th>{{ tr('content_type_col') }}</th><th>{{ tr('impact_col') }}</th><th>{{ tr('note_col') }}</th></tr>
-  {% for m in analysis.content_audit.missing_content %}
-  <tr>
-    <td><strong>{{ m.type }}</strong></td>
-    <td>
-      {% if m.severity == 'high' %}<span class="badge red">{{ tr('severity_high') }}</span>
-      {% elif m.severity == 'medium' %}<span class="badge amber">{{ tr('severity_medium') }}</span>
-      {% else %}<span class="badge low">{{ tr('severity_low') }}</span>{% endif %}
-    </td>
-    <td style="font-size:7.5pt;color:#64748b;">{{ m.note }}</td>
-  </tr>
-  {% endfor %}
-</table>
-{% endif %}
-
-{% if analysis.content_audit.brand_consistency %}
-<h3>3.4 {{ tr('brand_consistency') }}</h3>
-{% if analysis.content_audit.brand_consistency.ok %}
-<p style="color:#16a34a;font-size:8.5pt;">{{ tr('brand_consistent') }}</p>
-{% else %}
-<p style="color:#dc2626;font-size:8.5pt;">{{ tr('brand_inconsistent') }}</p>
-<ul style="font-size:8.5pt;color:#475569;">
-  {% for issue in analysis.content_audit.brand_consistency.issues %}
-  <li>{{ issue }}</li>
-  {% endfor %}
-</ul>
-{% endif %}
-{% endif %}
-
-{% if analysis.content_audit.freshness %}
-<h3>3.5 {{ tr('freshness') }}</h3>
-{% if analysis.content_audit.freshness.ok %}
-<p style="color:#16a34a;font-size:8.5pt;">{{ tr('freshness_ok') }}</p>
-{% else %}
-<ul style="font-size:8.5pt;color:#475569;">
-  {% for issue in analysis.content_audit.freshness.issues %}
-  <li>⚠ {{ issue }}</li>
-  {% endfor %}
-</ul>
-{% endif %}
-{% endif %}
-{% endif %}
-
-<!-- SCORING (LLM) -->
-{% if analysis.scoring %}
-<div class="page-break"></div>
-<h2>4. {{ tr('section_scoring') }}</h2>
-
-{% set dims = [
-  ('intent_match', tr('dim_intent_match'), 25),
-  ('citeability', tr('dim_citeability'), 25),
-  ('authority', tr('dim_authority'), 20),
-  ('technical', tr('dim_technical'), 15),
-  ('trust', tr('dim_trust'), 15),
-] %}
-{% for key, label, weight in dims %}
-{% if analysis.scoring[key] %}
-<div class="score-card">
-  <div style="font-size:8.5pt;font-weight:600;">{{ label }} <span style="color:#94a3b8;">({{ weight }}%)</span></div>
-  <div style="font-size:16pt;font-weight:700;color:{{ '#16a34a' if analysis.scoring[key].score >= 60 else ('#d97706' if analysis.scoring[key].score >= 30 else '#dc2626') }}">{{ analysis.scoring[key].score }}/100</div>
-  <div class="score-bar"><div class="score-bar-fill {{ 'green' if analysis.scoring[key].score >= 60 else ('amber' if analysis.scoring[key].score >= 30 else 'red') }}" style="width:{{ analysis.scoring[key].score }}%;"></div></div>
-  <div style="font-size:7pt;color:#64748b;margin-top:3pt;">{{ analysis.scoring[key].note }}</div>
-</div>
-{% endif %}
-{% endfor %}
-{% endif %}
-
-<!-- COMPETITOR INSIGHTS (LLM) -->
-{% if analysis.competitor_insights %}
-<h2>5. {{ tr('section_competitors') }}</h2>
-<p class="prose" style="font-size:9pt;color:#475569;">{{ analysis.competitor_insights }}</p>
-{% endif %}
-
-<!-- CITATIONS -->
-{% if visibility.top_domains %}
-<h2>6. {{ tr('section_citations') }}</h2>
-<h3>{{ tr('top_domains') }}</h3>
-<table>
-  <tr><th>{{ tr('domain_col') }}</th><th>{{ tr('category_col') }}</th><th>{{ tr('citations_col') }}</th></tr>
-  {% for d in visibility.top_domains[:15] %}
-  <tr>
-    <td>{{ d.domain }}</td>
-    <td><span class="tag">{{ d.category }}</span></td>
-    <td>{{ d.n }}</td>
-  </tr>
-  {% endfor %}
-</table>
-
-{% if visibility.top_urls %}
-<h3>{{ tr('top_urls') }}</h3>
-<table>
-  <tr><th>{{ tr('url_col') }}</th><th>{{ tr('domain_col') }}</th><th>{{ tr('citations_col') }}</th></tr>
-  {% for u in visibility.top_urls[:10] %}
-  <tr>
-    <td style="max-width:180pt;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ u.url }}</td>
-    <td>{{ u.domain }}</td>
-    <td>{{ u.n }}</td>
-  </tr>
-  {% endfor %}
-</table>
-{% endif %}
-{% endif %}
-
-<!-- RECOMMENDATIONS (LLM) -->
-{% if analysis.recommendations %}
-<div class="page-break"></div>
-<h2>7. {{ tr('section_roadmap') }}</h2>
-
-{% for r in analysis.recommendations %}
-<div class="rec-card {{ r.priority }}">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3pt;">
-    <span>
-      {% if r.priority == 'immediate' %}<span class="badge red">{{ tr('priority_immediate') }}</span>
-      {% elif r.priority == 'short_term' %}<span class="badge amber">{{ tr('priority_short_term') }}</span>
-      {% else %}<span class="badge" style="background:#eef2ff;color:#4f46e5;">{{ tr('priority_long_term') }}</span>{% endif %}
-    </span>
-    <span style="font-size:7pt;color:#94a3b8;">
-      {{ tr('effort') }}：<span class="badge {{ r.effort }}">{{ tr('effort_' + r.effort) }}</span>
-      {{ tr('impact') }}：<span class="badge {{ 'high' if r.impact == 'high' else ('medium' if r.impact == 'medium' else 'low') }}">{{ tr('impact_' + r.impact) }}</span>
-    </span>
-  </div>
-  <p style="font-size:8.5pt;margin:0;color:#334155;">{{ r.action }}</p>
-</div>
-{% endfor %}
-{% endif %}
-
-<!-- ENGINE DISTRIBUTION -->
-{% if visibility.engines %}
-<h2>8. {{ tr('section_engines') }}</h2>
-<table>
-  <tr><th>{{ tr('analysis_engine') }}</th><th>{{ tr('runs_col') }}</th><th>{{ tr('share_col') }}</th></tr>
-  {% for e in visibility.engines %}
-  {% set share = (e.n / visibility.runs * 100) if visibility.runs else 0 %}
-  <tr>
-    <td>{{ e.name }}</td>
-    <td>{{ e.n }}</td>
-    <td>{{ "%.0f"|format(share) }}%</td>
-  </tr>
-  {% endfor %}
-</table>
-{% endif %}
 
 <div class="footer">
   {{ tr('footer_text', date=generated_at, days=days) }}<br>
