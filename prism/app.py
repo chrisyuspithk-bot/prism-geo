@@ -619,6 +619,17 @@ def crawl_site(request: Request, site_id: int):
     return RedirectResponse(f"/sites/{site_id}?lang={_resolve_lang(request)}", 303)
 
 
+@app.post("/sites/{site_id}/cancel")
+def cancel_crawl(request: Request, site_id: int):
+    tenant = _tenant(request)
+    with connect() as conn:
+        conn.execute(
+            "UPDATE sites SET status = 'pending', crawl_error = 'Cancelled by user', crawl_progress = '' WHERE id = ? AND tenant_id = ? AND status = 'crawling'",
+            (site_id, tenant["id"]))
+    back = request.headers.get("referer", "/sites")
+    return RedirectResponse(back, 303)
+
+
 @app.post("/sites/{site_id}/delete")
 def delete_site(request: Request, site_id: int):
     tenant = _tenant(request)
@@ -874,9 +885,16 @@ def _run_crawl(site_id: int, domain: str):
 
     def _do():
         try:
+            def _cancelled() -> bool:
+                with connect() as c:
+                    r = c.execute("SELECT status FROM sites WHERE id = ?", (site_id,)).fetchone()
+                return not r or r["status"] != "crawling"
+
             with connect() as conn:
                 conn.execute("UPDATE sites SET crawl_progress = 'Discovering pages from sitemap…' WHERE id = ?", (site_id,))
             urls = crawler.discover(domain)
+            if _cancelled():
+                return
             print(f"[crawl:{site_id}] discovered {len(urls)} URLs for {domain}")
 
             pages_data: list[dict] = []
@@ -885,6 +903,8 @@ def _run_crawl(site_id: int, domain: str):
                 if url in seen_urls:
                     continue
                 seen_urls.add(url)
+                if _cancelled():
+                    return
                 with connect() as conn:
                     conn.execute("UPDATE sites SET crawl_progress = ? WHERE id = ?",
                                  (f"Fetching page {i+1}/{len(urls)}…", site_id))
@@ -894,6 +914,8 @@ def _run_crawl(site_id: int, domain: str):
             print(f"[crawl:{site_id}] fetched {len(pages_data)} pages")
 
             if pages_data:
+                if _cancelled():
+                    return
                 with connect() as conn:
                     conn.execute("UPDATE sites SET crawl_progress = 'Saving pages…' WHERE id = ?", (site_id,))
                     conn.execute("DELETE FROM pages WHERE site_id = ?", (site_id,))
@@ -915,12 +937,14 @@ def _run_crawl(site_id: int, domain: str):
                     "SELECT id, content FROM chunks WHERE site_id = ? AND embedding = ''",
                     (site_id,),
                 ).fetchall()
-            if rows:
+            if rows and not _cancelled():
                 with connect() as conn:
                     conn.execute("UPDATE sites SET crawl_progress = ? WHERE id = ?",
                                  (f"Computing embeddings for {len(rows)} chunks…", site_id))
                 contents = [r["content"] for r in rows]
                 vecs = embeddings.embed(contents)
+                if _cancelled():
+                    return
                 for r, vec in zip(rows, vecs):
                     with connect() as conn:
                         conn.execute(
