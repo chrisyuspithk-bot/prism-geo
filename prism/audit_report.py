@@ -17,28 +17,47 @@ website content against AI visibility data to produce a professional audit
 report. You are direct, data-specific, and never use generic praise.
 
 For each section, reference specific page URLs, content facts, competitor names,
-and visibility metrics from the provided data. Write in the same language as
-the brand content (Chinese for Chinese brands, English otherwise).
+and visibility metrics from the provided data. Write in Traditional Chinese
+(繁體中文) for Chinese brands, English otherwise.
 
 Return your analysis as a JSON object with these keys:
 - "executive_summary": 2-3 paragraph overall assessment
 - "content_audit": {
-    "page_inventory": [{ "url": "...", "title": "...", "category": "product|about|blog|service|landing|other", "quality": "good|medium|thin", "note": "1-line assessment" }],
-    "fact_density": { "pct": 0-100, "assessment": "1 paragraph about verifiable facts vs fluff" },
-    "missing_content": [{ "type": "FAQ|case_studies|comparison_guides|testimonials|pricing|tech_specs|white_papers|schema", "severity": "high|medium|low", "note": "why it matters" }],
-    "brand_consistency": { "ok": true/false, "issues": ["list of inconsistencies found"] },
-    "freshness": { "ok": true/false, "issues": ["outdated copyright", "stale blog", "no dates", etc.] }
+    "page_inventory": [{ "url","title","category":"product|about|blog|service|landing|other","quality":"good|medium|thin","note":"1-line" }],
+    "fact_density": { "pct":0-100, "verifiable_examples":["specific fact"], "assessment":"1 paragraph" },
+    "missing_content": [{ "type":"FAQ|case_studies|comparison_guides|testimonials|pricing|tech_specs|white_papers|schema_markup", "severity":"high|medium|low", "note":"why it matters for AI visibility" }],
+    "schema_assessment": { "detected":true/false, "types_found":["..."], "note":"1-2 sentences on impact" },
+    "brand_consistency": { "ok":true/false, "issues":["..."] },
+    "freshness": { "ok":true/false, "last_updated_estimate":"...", "issues":["..."] }
   },
 - "scoring": {
-    "intent_match": { "score": 0-100, "note": "1 sentence" },
-    "citeability": { "score": 0-100, "note": "1 sentence" },
-    "authority": { "score": 0-100, "note": "1 sentence" },
-    "technical": { "score": 0-100, "note": "1 sentence" },
-    "trust": { "score": 0-100, "note": "1 sentence" }
+    "intent_match": { "score":0-100, "weight":25, "breakdown":"1-2 sentence assessment" },
+    "citeability": { "score":0-100, "weight":25, "breakdown":"1-2 sentence assessment" },
+    "authority": { "score":0-100, "weight":20, "breakdown":"1-2 sentence assessment" },
+    "visibility": { "score":0-100, "weight":20, "breakdown":"1-2 sentence assessment" },
+    "consistency": { "score":0-100, "weight":10, "breakdown":"1-2 sentence assessment" }
   },
-- "competitor_insights": "1-2 paragraph analysis of competitor positioning vs the brand",
-- "recommendations": [{ "priority": "immediate|short_term|long_term", "action": "specific 1-sentence action item", "effort": "low|medium|high", "impact": "high|medium|low" }]
-}"""
+- "competitor_analysis": {
+    "overview": "1 paragraph competitive landscape",
+    "per_competitor": [{ "name":"Name","strengths":["..."],"weaknesses":["..."],"opportunity":"how to differentiate" }]
+  },
+- "platform_analysis": {
+    "overview": "1 paragraph cross-engine summary",
+    "engines": [{ "name":"engine name","assessment":"1 sentence","recommendation":"platform-specific tip" }]
+  },
+- "third_party_signals": {
+    "note": "Automated detection is limited. Manual audit recommended for:",
+    "checklist": ["GBP listing","industry directories","social media profiles","media/PR coverage","backlink profile"]
+  },
+- "recommendations": {
+    "immediate": [{ "action":"...","effort":"low|medium|high","impact":"high|medium|low" }],
+    "short_term": [{ "action":"...","effort":"low|medium|high","impact":"high|medium|low" }],
+    "long_term": [{ "action":"...","effort":"low|medium|high","impact":"high|medium|low" }],
+    "effort_impact_matrix": { "quick_wins":["..."],"major_projects":["..."],"fill_ins":["..."],"money_pits":["..."] },
+    "content_templates": [{ "type":"FAQ|case_study|comparison|report","headline":"...","structure":["bullet","bullet","bullet"] }],
+    "monitoring": { "metrics":[{ "name":"...","tool":"...","frequency":"weekly|monthly|quarterly" }] }
+  }
+Return ONLY valid JSON, no markdown fences, no trailing commas."""
 
 
 def _get_llm():
@@ -98,7 +117,8 @@ def build_audit_data(tenant_id: int, days: int = 30) -> dict | None:
         "tenant": tenant,
         "competitors": competitors,
         "sites": sites,
-        "pages_by_site": pages_by_site,
+        "pages_by_site": {site["domain"]: pgs for site in sites if (pgs := pages_by_site.get(site["id"], []))},
+        "all_pages": [p for pgs in pages_by_site.values() for p in pgs],
         "visibility": vis_data,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "days": days,
@@ -135,7 +155,7 @@ def _call_llm(api_key: str, base_url: str, model: str, prompt: str) -> str:
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.5,
-            "max_tokens": 4096,
+            "max_tokens": 8192,
         },
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         timeout=120,
@@ -169,10 +189,7 @@ def analyze(tenant_id: int, days: int = 30) -> dict:
         return data
 
     # Build content summary from all crawled sites
-    all_pages = []
-    for site_id, pages in data["pages_by_site"].items():
-        all_pages.extend(pages)
-
+    all_pages = data.get("all_pages", [])
     content_summary = _build_content_summary(all_pages)
 
     # Build visibility summary

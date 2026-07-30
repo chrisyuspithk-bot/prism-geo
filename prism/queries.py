@@ -503,6 +503,7 @@ def report_data(conn, tenant_id: int, days: int = 30) -> dict:
         "last_run": last["t"],
         "days": days,
         "prompt_rows": prompt_rows,
+        "all_prompt_rows": prompt_rows,
         "sov": _dicts(sov),
         "total_mentions": total_mentions,
         "top_domains": _dicts(top_domains),
