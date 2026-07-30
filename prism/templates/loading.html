@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>正在生成報告…</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+    background: #f8fafc; min-height: 100vh; display: flex; align-items: center; justify-content: center; 
+  }
+  .card {
+    background: #fff; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 24px rgba(0,0,0,0.04);
+    padding: 48px 64px; text-align: center; max-width: 420px; width: 100%;
+  }
+  .spinner {
+    width: 48px; height: 48px; border: 4px solid #e2e8f0; border-top-color: #4f46e5;
+    border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  h2 { font-size: 16px; color: #1e293b; margin-bottom: 8px; font-weight: 600; }
+  p { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+  .error { color: #dc2626; margin-top: 16px; font-size: 13px; display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="spinner" id="spinner"></div>
+  <h2 id="status">🎯 正在生成 GEO 審計報告</h2>
+  <p id="sub">正在分析網站內容與 AI 可見度數據，請稍候…</p>
+  <p class="error" id="err"></p>
+</div>
+<script>
+(async function() {
+  const params = new URLSearchParams(window.location.search);
+  const days = params.get('days') || '30';
+  try {
+    const resp = await fetch('/reports/audit?days=' + days, { credentials: 'same-origin' });
+    if (!resp.ok) throw new Error('伺服器錯誤 (' + resp.status + ')');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    document.getElementById('status').textContent = '✅ 報告已生成';
+    document.getElementById('sub').textContent = '下載開始…';
+    const a = document.createElement('a'); a.href = url; a.download = 'geo-audit-report.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    setTimeout(function() { window.history.back(); }, 1500);
+  } catch(e) {
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('status').textContent = '❌ 生成失敗';
+    document.getElementById('sub').textContent = '請稍後再試或聯絡管理員。';
+    document.getElementById('err').style.display = 'block';
+    document.getElementById('err').textContent = e.message;
+  }
+})();
+</script>
+</body>
+</html>

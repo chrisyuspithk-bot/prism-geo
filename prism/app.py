@@ -711,6 +711,12 @@ def reports_audit_download(request: Request, days: int = 30):
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
+@app.get("/reports/audit/loading")
+def reports_audit_loading(request: Request):
+    """Show a loading spinner while the audit generates, then trigger download."""
+    return templates.TemplateResponse(request, "loading.html", context=ctx(request, page="reports"))
+
+
 def _run_crawl(site_id: int, domain: str):
     """Run crawl synchronously (in background via FastAPI thread pool)."""
     with connect() as conn:
