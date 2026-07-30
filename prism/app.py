@@ -660,15 +660,21 @@ def page_detail(request: Request, site_id: int, page_id: int):
 
 
 @app.get("/sites/{site_id}/generate", response_class=HTMLResponse)
-def generate_page(request: Request, site_id: int):
+def generate_page(request: Request, site_id: int, page: int = 1):
     tenant = _tenant(request)
     sites, pages_by_site = _site_queries(tenant["id"])
     site = next((s for s in sites if s["id"] == site_id), None)
     if not site or site["status"] != "ready":
         return RedirectResponse(f"/sites/{site_id}", 303)
+    all_pages = pages_by_site.get(site_id, [])
+    per_page = 30
+    total_pages = max(1, (len(all_pages) + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    paged = all_pages[(page - 1) * per_page : page * per_page]
     return templates.TemplateResponse(
         request, "generate.html",
-        context=ctx(request, page="sites", site=site, pages=pages_by_site.get(site_id, [])))
+        context=ctx(request, page="sites", site=site, pages=paged,
+                    page_num=page, total_pages=total_pages, total_items=len(all_pages)))
 
 
 @app.post("/api/generate")

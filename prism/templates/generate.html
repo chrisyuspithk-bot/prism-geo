@@ -55,6 +55,19 @@
         <div class="truncate">{{ p.title or p.path }}</div>
         {% endfor %}
       </div>
+      {% if total_pages > 1 %}
+      <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400">
+        <span>{{ page_num }}/{{ total_pages }} ({{ total_items }} pages)</span>
+        <div class="flex gap-1.5">
+          {% if page_num > 1 %}
+          <a href="?page={{ page_num - 1 }}" class="rounded border border-slate-200 px-2 py-0.5 hover:bg-slate-50">←</a>
+          {% endif %}
+          {% if page_num < total_pages %}
+          <a href="?page={{ page_num + 1 }}" class="rounded border border-slate-200 px-2 py-0.5 hover:bg-slate-50">→</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>
