@@ -1,5 +1,7 @@
 """RAG: retrieve relevant chunks and generate grounded copy via LLM."""
 
+import re
+
 import httpx
 
 from . import embeddings
@@ -98,7 +100,8 @@ def generate_with_llm(prompt: str) -> str:
                 timeout=60,
             )
             data = resp.json()
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            text = data["candidates"][0]["content"]["parts"][0]["text"]
+            return _clean_markdown(text)
         except Exception as e:
             return f"[Error: {e}]"
 
@@ -112,7 +115,22 @@ def generate_with_llm(prompt: str) -> str:
         )
         data = resp.json()
         if "choices" in data:
-            return data["choices"][0]["message"]["content"]
+            text = data["choices"][0]["message"]["content"]
+            return _clean_markdown(text)
         return f"[Error: {data.get('error', {}).get('message', str(data))}]"
     except Exception as e:
         return f"[Error generating copy: {e}]"
+
+
+def _clean_markdown(text: str) -> str:
+    """Strip common markdown formatting for clean, human-readable output."""
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)       # **bold**
+    text = re.sub(r"\*(.+?)\*", r"\1", text)            # *italic*
+    text = re.sub(r"__(.+?)__", r"\1", text)             # __bold__
+    text = re.sub(r"_(.+?)_", r"\1", text)               # _italic_
+    text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)  # ### headers
+    text = re.sub(r"^[-*+]\s+", "", text, flags=re.MULTILINE)   # - bullet
+    text = re.sub(r"^\d+\.\s+", "", text, flags=re.MULTILINE)    # 1. numbered
+    text = re.sub(r"`(.+?)`", r"\1", text)               # `code`
+    text = re.sub(r"\n{3,}", "\n\n", text)               # collapse excessive newlines
+    return text.strip()

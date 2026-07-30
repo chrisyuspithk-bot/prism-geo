@@ -23,6 +23,7 @@ STRINGS = {
     "opportunities": {"zh-TW": "成長機會", "en": "Opportunities"},
     "settings": {"zh-TW": "設定", "en": "Settings"},
     "brand_competitors": {"zh-TW": "品牌與競爭者", "en": "Brand & competitors"},
+    "recognized_as": {"zh-TW": "被識別為：", "en": "Recognized as:"},
     "prompts": {"zh-TW": "提問", "en": "Prompts"},
     "operator": {"zh-TW": "管理員", "en": "Operator"},
     "clients": {"zh-TW": "客戶", "en": "Clients"},
