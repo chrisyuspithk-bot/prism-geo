@@ -704,12 +704,11 @@ _audit_jobs: dict[str, dict] = {}
 
 
 def _audit_worker(job_id: str, tenant_id: int, days: int):
-    """Run audit generation in background, updating _audit_jobs."""
+    """Run audit generation in background, updating _audit_jobs with dummy progress."""
     now = time.time()
     try:
-        _audit_jobs[job_id] = {"progress": 0, "label": "正在讀取網站數據…", "done": False, "_ts": now}
+        _audit_jobs[job_id] = {"progress": 5, "label": "正在讀取網站數據…", "done": False, "_ts": now}
 
-        # Step 1: gather data
         data = audit_report.build_audit_data(tenant_id, days)
         if data is None:
             _audit_jobs[job_id] = {"progress": 0, "label": "錯誤", "done": True, "error": "無品牌數據", "_ts": now}
@@ -720,48 +719,14 @@ def _audit_worker(job_id: str, tenant_id: int, days: int):
             _audit_jobs[job_id] = {"progress": 0, "label": "錯誤", "done": True, "error": "未設定 LLM API 金鑰", "_ts": now}
             return
 
-        ct = audit_report._content_text(data["all_pages"])
-        vt = audit_report._vis_text(data)
+        # Run the analysis (single LLM call in the d0e0416 version)
+        _audit_jobs[job_id] = {"progress": 20, "label": "分析網站內容與 AI 可見度…", "_ts": now}
+        data = audit_report.analyze(tenant_id, days)
+        if data is None or data.get("error"):
+            _audit_jobs[job_id] = {"progress": 0, "label": "錯誤", "done": True, "error": "分析失敗", "_ts": now}
+            return
 
-        # Call 1: content audit
-        _audit_jobs[job_id] = {"progress": 10, "label": "分析網站內容結構與品質…", "_ts": now}
-        r1 = audit_report._safe(api_key, base_url, model, audit_report._SYS_CONTENT,
-            f"BRAND: {data['brand']['name']}\nWEBSITE: {data['tenant'].get('website','')}\nPAGES CRAWLED: {len(data['all_pages'])}\n\n=== CRAWLED WEBSITE CONTENT ===\n{ct}\n\nAnalyze the content. Return JSON with executive_summary and content_audit.",
-            label="content")
-
-        # Call 2: strategy
-        _audit_jobs[job_id] = {"progress": 40, "label": "評估 AI 可見度與競爭對手…", "_ts": now}
-        r2 = audit_report._safe(api_key, base_url, model, audit_report._SYS_STRATEGY,
-            f"BRAND: {data['brand']['name']}\nCOMPETITORS: {', '.join(c['name'] for c in data['competitors'])}\nWEBSITE: {data['tenant'].get('website','')}\n\n=== VISIBILITY DATA ===\n{vt}\n\nBased on this data, return JSON with scoring, competitor_analysis, platform_analysis, and third_party_signals.",
-            label="strategy")
-
-        # Call 3: recommendations
-        _audit_jobs[job_id] = {"progress": 70, "label": "生成優化路線圖與建議…", "_ts": now}
-        findings = []
-        if "executive_summary" in r1:
-            findings.append(f"Summary: {r1['executive_summary'][:400]}")
-        if "scoring" in r2:
-            s2 = r2["scoring"]
-            findings.append("Scores: " + ", ".join(f"{k}={s2[k].get('score','?')}/100" for k in s2 if isinstance(s2[k], dict)))
-        if "content_audit" in r1:
-            ca = r1["content_audit"]
-            fd = ca.get("fact_density", {})
-            findings.append(f"Fact density: {fd.get('pct','?')}%")
-            mc = ca.get("missing_content", [])
-            if mc:
-                findings.append("Missing: " + ", ".join(m["type"] for m in mc[:5]))
-        r3 = audit_report._safe(api_key, base_url, model, audit_report._SYS_RECOMMENDATIONS,
-            f"BRAND: {data['brand']['name']}\nCOMPETITORS: {', '.join(c['name'] for c in data['competitors'])}\n\n=== AUDIT FINDINGS ===\n{chr(10).join(findings)}\n\nBased on these findings, return JSON with recommendations.",
-            label="recommendations")
-
-        analysis = {}
-        analysis.update(r1)
-        analysis.update(r2)
-        analysis.update(r3)
-        data["analysis"] = analysis
-
-        _audit_jobs[job_id] = {"progress": 90, "label": "生成 PDF 報告…", "_ts": now}
-
+        _audit_jobs[job_id] = {"progress": 80, "label": "生成 PDF 報告…", "_ts": now}
         from weasyprint import HTML
         from jinja2 import Environment, FileSystemLoader
         env = Environment(loader=FileSystemLoader(str(BASE / "templates")))
