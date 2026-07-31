@@ -204,9 +204,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute(
             "UPDATE tenants SET name = ?, website = ? WHERE id = 1 AND name = 'Default'",
             (own["name"], own["website"]))
-    # Fix old schedule_hour default (was 2 UTC, now 16 UTC = 00:00 GMT+8)
+    # Fix old schedule_hour default (was 2 UTC; _maybe_run now uses HKT hour)
     conn.execute(
-        "UPDATE settings SET value = '16' WHERE key = 'schedule_hour' AND value = '2'")
+        "UPDATE settings SET value = '0' WHERE key = 'schedule_hour' AND value = '2'")
 
 
 @contextmanager

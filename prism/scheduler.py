@@ -37,9 +37,12 @@ def _set_defaults() -> None:
 async def _scheduler() -> None:
     _set_defaults()
     while True:
-        enabled, hour = _get_config()
-        if enabled:
-            _maybe_run(hour)
+        try:
+            enabled, hour = _get_config()
+            if enabled:
+                _maybe_run(hour)
+        except Exception as exc:
+            print(f"[scheduler] error: {exc}", flush=True)
         # Sleep until next whole-minute boundary to avoid drift
         now = datetime.now(timezone.utc)
         wait = 60 - now.second
@@ -57,6 +60,7 @@ def _maybe_run(hour: int) -> None:
     if hkt.hour == hour and _last_rundate != today:
         if keystore.has_any_key():
             _last_rundate = today
+            print(f"[scheduler] firing daily run for {today} (HKT hour {hour})", flush=True)
             with connect() as conn:
                 tenants = q(conn, "SELECT id FROM tenants")
             for t in tenants:
