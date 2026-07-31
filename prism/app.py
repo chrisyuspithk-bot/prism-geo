@@ -698,6 +698,54 @@ def generate_page(request: Request, site_id: int, page: int = 1):
                     page_num=page, total_pages=total_pages, total_items=len(all_pages)))
 
 
+@app.post("/api/strip-markdown")
+async def api_strip_markdown(request: Request):
+    """Strip markdown formatting characters from text."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    text = str(body.get("content", "")).strip()
+    if not text:
+        return JSONResponse({"error": "content is required"}, 400)
+
+    # Remove horizontal rules
+    text = re.sub(r"^[-*_]{3,}\s*$", "", text, flags=re.MULTILINE)
+    # Remove bold/italic markers
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    text = re.sub(r"\*(.+?)\*", r"\1", text)
+    text = re.sub(r"__(.+?)__", r"\1", text)
+    # Remove heading markers
+    text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
+    # Remove bullet markers
+    text = re.sub(r"^[-*+]\s+", "", text, flags=re.MULTILINE)
+    # Remove numbered list markers
+    text = re.sub(r"^\d+\.\s+", "", text, flags=re.MULTILINE)
+    # Remove inline code markers
+    text = re.sub(r"`([^`]+)`", r"\1", text)
+    # Remove link syntax: [text](url) → text
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    # Remove blockquote markers
+    text = re.sub(r"^>\s?", "", text, flags=re.MULTILINE)
+    # Remove table formatting pipes from table rows (keep content)
+    lines = text.split("\n")
+    cleaned: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        # Skip separator rows like |---|---|
+        if re.match(r"^\|[\s\-:|]+\|$", stripped):
+            continue
+        if stripped.startswith("|") and stripped.endswith("|"):
+            cells = [c.strip() for c in stripped[1:-1].split("|")]
+            cleaned.append("  ".join(c for c in cells if c))
+        else:
+            cleaned.append(line)
+    text = "\n".join(cleaned)
+    # Collapse excessive newlines
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return JSONResponse({"content": text.strip()})
+
+
 @app.post("/api/geo-optimize")
 async def api_geo_optimize(request: Request):
     """Rewrite content for Generative Engine Optimization (GEO) via LLM."""

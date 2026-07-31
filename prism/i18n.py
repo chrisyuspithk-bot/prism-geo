@@ -51,6 +51,7 @@ STRINGS = {
     "discover_competitors": {"zh-TW": "🔍 探索競爭者", "en": "Discover competitors"},
     "gen_keywords": {"zh-TW": "✨ 10 個關鍵字", "en": "✨ 10 Keywords"},
     "geo_optimize": {"zh-TW": "🚀 GEO 優化", "en": "🚀 GEO Optimize"},
+    "clean_format": {"zh-TW": "🧹 清除格式", "en": "🧹 Clean"},
 
     # --- overview page ---
     "no_brand_title": {"zh-TW": "尚未設定品牌", "en": "No brand configured yet"},

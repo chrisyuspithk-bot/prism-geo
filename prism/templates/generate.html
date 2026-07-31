@@ -55,6 +55,10 @@
                 class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50">
           {{ t('geo_optimize') if t('geo_optimize') != 'geo_optimize' else '🚀 GEO Optimize' }}
         </button>
+        <button type="button" id="clean-btn" onclick="stripMarkdown()"
+                class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50">
+          {{ t('clean_format') if t('clean_format') != 'clean_format' else '🧹 Clean' }}
+        </button>
         <span id="geo-spinner" class="hidden text-sm text-slate-500 self-center">{{ t('generating') }}</span>
       </div>
     </div>
@@ -207,6 +211,34 @@ async function geoOptimize() {
   } finally {
     btn.disabled = false;
     spinner.classList.add('hidden');
+  }
+}
+
+async function stripMarkdown() {
+  const btn = document.getElementById('clean-btn');
+  const resultText = document.getElementById('result-text');
+  const content = resultText.textContent.trim();
+  if (!content) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Cleaning…';
+
+  try {
+    const resp = await fetch('/api/strip-markdown', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({content: content})
+    });
+    const data = await resp.json();
+    if (data.content) {
+      resultText.textContent = data.content;
+      document.getElementById('draft-content').value = data.content;
+    }
+  } catch(err) {
+    /* silent — non-critical */
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🧹 Clean';
   }
 }
 </script>
