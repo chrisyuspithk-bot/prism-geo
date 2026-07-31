@@ -50,6 +50,7 @@ STRINGS = {
     "title_setup": {"zh-TW": "設定工作區 · prism", "en": "Set up your brand · prism"},
     "discover_competitors": {"zh-TW": "🔍 探索競爭者", "en": "Discover competitors"},
     "gen_keywords": {"zh-TW": "✨ 10 個關鍵字", "en": "✨ 10 Keywords"},
+    "geo_optimize": {"zh-TW": "🚀 GEO 優化", "en": "🚀 GEO Optimize"},
 
     # --- overview page ---
     "no_brand_title": {"zh-TW": "尚未設定品牌", "en": "No brand configured yet"},
