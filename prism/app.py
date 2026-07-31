@@ -6,13 +6,16 @@ evaluation is scoped to the tenant selected in the sidebar. Engine API keys are
 configured once, centrally, by the operator and shared across all tenants.
 """
 
+import json
 import os
+import re
 import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import Thread
 
+import httpx
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -693,6 +696,130 @@ def generate_page(request: Request, site_id: int, page: int = 1):
         request, "generate.html",
         context=ctx(request, page="sites", site=site, pages=paged,
                     page_num=page, total_pages=total_pages, total_items=len(all_pages)))
+
+
+@app.post("/api/generate-keywords")
+async def api_generate_keywords(request: Request):
+    """Generate 10 SEO/GEO keywords from crawled site content via LLM."""
+    import asyncio
+    tenant = _tenant(request)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    site_id = int(body.get("site_id", 0))
+    lang = _resolve_lang(request)
+
+    # Read up to 10 representative pages (prefer pages with titles and content)
+    with connect() as conn:
+        site = q1(conn, "SELECT * FROM sites WHERE id = ? AND tenant_id = ?",
+                  (site_id, tenant["id"]))
+        if not site:
+            return JSONResponse({"error": "Site not found"}, 404)
+        if site["status"] != "ready":
+            return JSONResponse({"error": "Site crawl is not complete yet"}, 400)
+
+        pages = q(conn,
+            """SELECT title, headings, content FROM pages
+               WHERE site_id = ? AND (title != '' OR content != '')
+               ORDER BY length(content) DESC LIMIT 10""",
+            (site_id,))
+        if not pages:
+            return JSONResponse({"error": "No page content found"}, 400)
+
+    # Build a lightweight summary for the LLM
+    parts: list[str] = []
+    for p in pages:
+        d = dict(p)
+        line = ""
+        if d["title"]:
+            line += d["title"]
+        if d["headings"]:
+            h = d["headings"].replace("\n", "; ")[:200]
+            if line:
+                line += " | "
+            line += h
+        if not line and d["content"]:
+            line = d["content"][:200]
+        if line:
+            parts.append(line)
+
+    summary = "\n".join(f"- {p}" for p in parts[:10])
+
+    if lang == "zh-TW":
+        ask = (
+            f"以下係一個網站嘅內容摘要（{len(pages)} 個頁面）：\n\n"
+            f"{summary}\n\n"
+            f"請根據以上網站內容，生成 10 個最相關嘅 SEO/GEO 關鍵字詞組。"
+            f"呢啲關鍵字應該反映網站嘅核心業務、產品、服務同目標受眾會搜尋嘅詞語。"
+            f"每個關鍵字應該係 2-5 個詞嘅詞組。\n\n"
+            f"只回傳一個 JSON 字串陣列，唔好加任何 markdown 或其他文字：\n"
+            f'["關鍵字1", "關鍵字2", ...]'
+        )
+    else:
+        ask = (
+            f"Here's a content summary of a website ({len(pages)} pages):\n\n"
+            f"{summary}\n\n"
+            f"Based on the website content above, generate 10 most relevant "
+            f"SEO/GEO keyword phrases. These should reflect the site's core "
+            f"business, products, services, and what the target audience would "
+            f"search for. Each keyword should be a 2-5 word phrase.\n\n"
+            f"Return ONLY a JSON array of strings, no markdown or other text:\n"
+            f'["keyword phrase 1", "keyword phrase 2", ...]'
+        )
+
+    from .keystore import active_engines
+    engines = active_engines()
+    if not engines:
+        return JSONResponse({"error": "No LLM engine configured"}, 400)
+
+    engine = engines[0]
+    key = engine["api_key"]
+    base = engine["base_url"]
+    model = engine["model"]
+    engine_name = engine["name"]
+
+    def _call_llm():
+        try:
+            if engine_name == "gemini":
+                resp = httpx.post(
+                    f"{base}/models/{model}:generateContent?key={key}",
+                    json={"contents": [{"parts": [{"text": ask}]}]},
+                    timeout=60,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                return data["candidates"][0]["content"]["parts"][0]["text"]
+            else:
+                resp = httpx.post(
+                    f"{base}/chat/completions",
+                    headers={"Authorization": f"Bearer {key}"},
+                    json={"model": model, "temperature": 0.6,
+                          "messages": [{"role": "user", "content": ask}]},
+                    timeout=60,
+                )
+                resp.raise_for_status()
+                return resp.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            return f"__ERROR__:{e}"
+
+    raw = await asyncio.to_thread(_call_llm)
+    if raw.startswith("__ERROR__:"):
+        return JSONResponse({"error": raw[9:]}, 500)
+
+    match = re.search(r"\[.*\]", raw, re.S)
+    if not match:
+        return JSONResponse({"error": "LLM did not return a valid keyword list"}, 500)
+
+    try:
+        keywords = json.loads(match.group(0))
+        if isinstance(keywords, list):
+            keywords = [str(k).strip() for k in keywords if str(k).strip()][:10]
+            return JSONResponse({"keywords": keywords})
+    except Exception:
+        pass
+
+    return JSONResponse({"error": "Failed to parse keywords"}, 500)
 
 
 @app.post("/api/generate")

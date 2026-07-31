@@ -20,11 +20,18 @@
         </select>
       </div>
       <div class="mb-4">
-        <label class="block text-sm font-semibold mb-2">{{ t('your_prompt') }}</label>
-        <textarea name="prompt" rows="3" required
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-semibold">{{ t('your_prompt') }}</label>
+          <button type="button" id="kw-btn" onclick="generateKeywords()"
+                  class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50">
+            {{ t('gen_keywords') if t('gen_keywords') != 'gen_keywords' else '✨ 10 Keywords' }}
+          </button>
+        </div>
+        <textarea name="prompt" id="prompt-input" rows="3" required
                   class="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                   placeholder="{{ t('your_prompt') }}"></textarea>
       </div>
+      <div id="kw-chips" class="mb-4 hidden flex flex-wrap gap-2"></div>
       <button type="submit" id="gen-btn"
               class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors">{{ t('generate_copy') }}</button>
       <span id="gen-spinner" class="hidden ml-3 text-sm text-slate-500">{{ t('generating') }}</span>
@@ -73,6 +80,49 @@
 </div>
 
 <script>
+async function generateKeywords() {
+  const btn = document.getElementById('kw-btn');
+  const chips = document.getElementById('kw-chips');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  try {
+    const resp = await fetch('/api/generate-keywords', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({site_id: {{ site.id }}})
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      chips.innerHTML = '<span class="text-xs text-red-500">' + data.error + '</span>';
+      chips.classList.remove('hidden');
+      return;
+    }
+
+    chips.innerHTML = '';
+    (data.keywords || []).forEach(kw => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors';
+      chip.textContent = kw;
+      chip.onclick = function() {
+        const ta = document.getElementById('prompt-input');
+        ta.value = ta.value ? ta.value + ', ' + kw : kw;
+        ta.focus();
+      };
+      chips.appendChild(chip);
+    });
+    chips.classList.remove('hidden');
+  } catch(err) {
+    chips.innerHTML = '<span class="text-xs text-red-500">Error: ' + err.message + '</span>';
+    chips.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ 10 Keywords';
+  }
+}
+
 async function generateCopy(e) {
   e.preventDefault();
   const btn = document.getElementById('gen-btn');
