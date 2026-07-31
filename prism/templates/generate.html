@@ -59,6 +59,14 @@
                 class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50">
           {{ t('clean_format') if t('clean_format') != 'clean_format' else '🧹 Clean' }}
         </button>
+        <button type="button" id="img-fb-btn" onclick="generateSocialImage('facebook')"
+                class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50">
+          {{ t('gen_fb_image') if t('gen_fb_image') != 'gen_fb_image' else '📘 FB Image' }}
+        </button>
+        <button type="button" id="img-ig-btn" onclick="generateSocialImage('instagram')"
+                class="rounded-lg border border-pink-200 bg-pink-50 px-4 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-100 transition-colors disabled:opacity-50">
+          {{ t('gen_ig_image') if t('gen_ig_image') != 'gen_ig_image' else '📸 IG Image' }}
+        </button>
         <span id="geo-spinner" class="hidden text-sm text-slate-500 self-center">{{ t('generating') }}</span>
       </div>
     </div>
@@ -240,6 +248,62 @@ async function stripMarkdown() {
     btn.disabled = false;
     btn.textContent = '🧹 Clean';
   }
+}
+
+async function generateSocialImage(platform) {
+  const resultText = document.getElementById('result-text');
+  const content = resultText.textContent.trim();
+  if (!content) return;
+
+  const btn = document.getElementById('img-' + (platform === 'instagram' ? 'ig' : 'fb') + '-btn');
+  const spinner = document.getElementById('geo-spinner');
+  btn.disabled = true;
+  spinner.classList.remove('hidden');
+  spinner.textContent = platform === 'instagram' ? '生成 IG 圖片中…' : '生成 FB 圖片中…';
+
+  try {
+    const resp = await fetch('/api/generate-social-image', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({content: content, platform: platform})
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      alert('Image generation failed: ' + data.error);
+    } else if (data.image) {
+      showImageModal(data.image, platform);
+    }
+  } catch(err) {
+    alert('Image generation failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    spinner.classList.add('hidden');
+    spinner.textContent = '{{ t('generating') }}';
+  }
+}
+
+function showImageModal(imageDataUrl, platform) {
+  // Remove existing modal if any
+  const existing = document.getElementById('image-modal');
+  if (existing) existing.remove();
+
+  const label = platform === 'instagram' ? 'Instagram 1:1' : 'Facebook 1.91:1';
+  const modal = document.createElement('div');
+  modal.id = 'image-modal';
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60';
+  modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = '<div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">'
+    + '<div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">'
+    + '<span class="font-semibold text-sm text-slate-700">' + label + '</span>'
+    + '<button onclick="document.getElementById(\'image-modal\').remove()" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>'
+    + '</div>'
+    + '<div class="p-4"><img src="' + imageDataUrl + '" class="w-full rounded-lg" alt="' + label + '"/></div>'
+    + '<div class="px-5 py-3 border-t border-slate-200 flex gap-2">'
+    + '<a href="' + imageDataUrl + '" download="prism-' + platform + '-post.png" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">下載圖片</a>'
+    + '<button onclick="navigator.clipboard.writeText(\'' + imageDataUrl + '\');alert(\'Copied!\')" class="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">複製</button>'
+    + '</div></div>';
+  document.body.appendChild(modal);
 }
 </script>
 {% endblock %}

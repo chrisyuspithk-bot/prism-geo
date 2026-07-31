@@ -52,6 +52,8 @@ STRINGS = {
     "gen_keywords": {"zh-TW": "✨ 10 個關鍵字", "en": "✨ 10 Keywords"},
     "geo_optimize": {"zh-TW": "🚀 GEO 優化", "en": "🚀 GEO Optimize"},
     "clean_format": {"zh-TW": "🧹 清除格式", "en": "🧹 Clean"},
+    "gen_fb_image": {"zh-TW": "📘 FB 圖片", "en": "📘 FB Image"},
+    "gen_ig_image": {"zh-TW": "📸 IG 圖片", "en": "📸 IG Image"},
 
     # --- overview page ---
     "no_brand_title": {"zh-TW": "尚未設定品牌", "en": "No brand configured yet"},

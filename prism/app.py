@@ -872,6 +872,131 @@ async def api_geo_optimize(request: Request):
     return JSONResponse({"optimized": cleaned, "engine": engine_name})
 
 
+@app.post("/api/generate-social-image")
+async def api_generate_social_image(request: Request):
+    """Generate a Facebook/Instagram post image from text via Gemini Imagen."""
+    import asyncio
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    content = str(body.get("content", "")).strip()
+    platform = body.get("platform", "facebook")  # facebook or instagram
+    lang = (body.get("lang") or _resolve_lang(request)).strip()
+
+    if not content:
+        return JSONResponse({"error": "content is required"}, 400)
+
+    if platform not in ("facebook", "instagram"):
+        return JSONResponse({"error": "platform must be facebook or instagram"}, 400)
+
+    # Truncate content to keep prompt size reasonable
+    content = content[:1200]
+
+    if lang == "zh-TW":
+        if platform == "instagram":
+            aspect = "1:1 正方形"
+            style = "現代、簡潔、適合 Instagram 嘅視覺風格"
+            headline = content.split("\n")[0][:80] if content else "企業資訊"
+            prompt = (
+                f"請為以下內容設計一張 Instagram 貼文圖片（{aspect}）。\n"
+                f"視覺風格：{style}。\n"
+                f"標題文字：{headline}\n"
+                f"內文摘要：{content[:300]}\n"
+                f"要求：乾淨的排版設計、品牌感配色、適合社交媒體分享。不要包含 Facebook/Instagram 標誌。"
+            )
+        else:
+            aspect = "1.91:1 橫向"
+            style = "專業、企業形象、適合 Facebook 貼文嘅視覺風格"
+            headline = content.split("\n")[0][:100] if content else "企業資訊"
+            prompt = (
+                f"請為以下內容設計一張 Facebook 貼文圖片（{aspect}）。\n"
+                f"視覺風格：{style}。\n"
+                f"標題文字：{headline}\n"
+                f"內文摘要：{content[:300]}\n"
+                f"要求：乾淨的排版設計、品牌感配色、適合社交媒體分享。不要包含 Facebook/Instagram 標誌。"
+            )
+    else:
+        if platform == "instagram":
+            aspect = "1:1 square"
+            style = "modern, clean, Instagram-optimized visual style"
+            headline = content.split("\n")[0][:80] if content else "Business Info"
+            prompt = (
+                f"Design an Instagram post image for this content ({aspect}).\n"
+                f"Visual style: {style}.\n"
+                f"Headline: {headline}\n"
+                f"Content summary: {content[:300]}\n"
+                f"Requirements: clean typography layout, brand-friendly colors, "
+                f"social-media-ready aesthetic. Do NOT include Facebook/Instagram logos."
+            )
+        else:
+            aspect = "1.91:1 landscape"
+            style = "professional, corporate, Facebook-post visual style"
+            headline = content.split("\n")[0][:100] if content else "Business Info"
+            prompt = (
+                f"Design a Facebook post image for this content ({aspect}).\n"
+                f"Visual style: {style}.\n"
+                f"Headline: {headline}\n"
+                f"Content summary: {content[:300]}\n"
+                f"Requirements: clean typography layout, brand-friendly colors, "
+                f"social-media-ready aesthetic. Do NOT include Facebook/Instagram logos."
+            )
+
+    from .keystore import active_engines
+    engines = active_engines()
+    gemini = None
+    for e in engines:
+        if e["name"] == "gemini" and e["api_key"]:
+            gemini = e
+            break
+    if gemini is None:
+        return JSONResponse(
+            {"error": "Gemini API key required for image generation. Add it at /settings/keys."}, 400)
+
+    key = gemini["api_key"]
+    # Use image-generation-capable model
+    image_model = "gemini-2.5-flash-image"
+
+    def _generate():
+        try:
+            resp = httpx.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{image_model}:generateContent"
+                f"?key={key}",
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {
+                        "responseModalities": ["IMAGE", "TEXT"]
+                    }
+                },
+                timeout=120,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            # Extract base64 image from response parts
+            for part in data.get("candidates", [{}])[0].get("content", {}).get("parts", []):
+                if "inlineData" in part:
+                    return {
+                        "mime": part["inlineData"].get("mimeType", "image/png"),
+                        "data": part["inlineData"].get("data", ""),
+                    }
+            # Fallback: return text if no image generated
+            text = data["candidates"][0]["content"]["parts"][0].get("text", "")
+            return {"error": f"No image generated. Text response: {text[:200]}"}
+        except Exception as e:
+            return {"error": str(e)}
+
+    result = await asyncio.to_thread(_generate)
+
+    if "error" in result:
+        return JSONResponse(result, 500)
+
+    return JSONResponse({
+        "image": f"data:{result['mime']};base64,{result['data']}",
+        "platform": platform,
+        "model": image_model,
+    })
+
+
 @app.post("/api/generate-keywords")
 async def api_generate_keywords(request: Request):
     """Generate 10 SEO/GEO keywords from crawled site content via LLM."""
