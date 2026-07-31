@@ -79,7 +79,7 @@ def visibility_page(conn, tenant_id: int, days: int = 30, model_id: int | None =
     # All successful runs in window with their mention set, in one pass.
     runs = q(
         conn,
-        f"""SELECT r.id, r.prompt_id, date(r.ran_at) AS day,
+        f"""SELECT r.id, r.prompt_id, date(r.ran_at, '+8 hours') AS day,
                    GROUP_CONCAT(b.name, CHAR(10)) AS brands
             FROM runs r
             LEFT JOIN mentions m ON m.run_id = r.id
@@ -172,7 +172,7 @@ def share_of_voice_page(conn, tenant_id: int, days: int = 30, model_id: int | No
     # Daily SoV trend for top 5 brands.
     daily = q(
         conn,
-        f"""SELECT date(r.ran_at) AS day, b.name, COUNT(DISTINCT m.run_id) AS n
+        f"""SELECT date(r.ran_at, '+8 hours') AS day, b.name, COUNT(DISTINCT m.run_id) AS n
             FROM mentions m JOIN brands b ON b.id = m.brand_id
             JOIN runs r ON r.id = m.run_id
             WHERE r.tenant_id = ? AND r.status = 'ok' AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
@@ -248,7 +248,7 @@ def citations_page(conn, tenant_id: int, days: int = 30, model_id: int | None = 
     )
     daily = q(
         conn,
-        f"""SELECT date(r.ran_at) AS day, c.domain, COUNT(*) AS count
+        f"""SELECT date(r.ran_at, '+8 hours') AS day, c.domain, COUNT(*) AS count
             FROM citations c JOIN runs r ON r.id = c.run_id
             WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
             GROUP BY day, c.domain""",
