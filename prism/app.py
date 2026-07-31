@@ -955,7 +955,7 @@ async def api_generate_social_image(request: Request):
 
     key = gemini["api_key"]
     # Use image-generation-capable model
-    image_model = "gemini-2.5-flash-image"
+    image_model = "gemini-3.1-flash-lite-image"
 
     def _generate():
         try:
