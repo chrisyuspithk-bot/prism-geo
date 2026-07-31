@@ -21,7 +21,7 @@ from fastapi.templating import Jinja2Templates
 from . import audit_report, i18n, jobs, keystore, queries, report, scheduler, workspace
 from . import crawler, chunk, drafts, embeddings, rag
 from .db import connect, init_db, q, q1
-from .onboarding import analyze_website, generate_prompts
+from .onboarding import analyze_website, discover_competitors, generate_prompts
 
 BASE = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE / "templates"))
@@ -198,6 +198,24 @@ async def setup_save(request: Request, name: str = Form(...),
             created += 1
     return RedirectResponse(f"/setup/review?tenant={tenant['id']}&created={created}",
                             status_code=303)
+
+
+@app.post("/api/setup/discover-competitors")
+async def api_discover_competitors(request: Request):
+    """Crawl up to 20 pages of the brand website and discover competitors via
+    an LLM with internet search (Perplexity/Gemini). Returns JSON."""
+    body = await request.json()
+    domain = (body.get("domain") or "").strip()
+    brand_name = (body.get("brand_name") or "").strip()
+    if not domain:
+        return JSONResponse({"error": "domain is required"}, status_code=400)
+    # Strip protocol/path, keep bare domain
+    from urllib.parse import urlparse
+    parsed = urlparse(domain if "://" in domain else f"https://{domain}")
+    domain = parsed.netloc or parsed.path
+    lang = _resolve_lang(request)
+    result = await discover_competitors(domain, brand_name, lang=lang)
+    return JSONResponse(result)
 
 
 @app.get("/setup/review", response_class=HTMLResponse)

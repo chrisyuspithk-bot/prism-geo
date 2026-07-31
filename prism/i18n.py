@@ -48,6 +48,7 @@ STRINGS = {
     "title_settings_keys": {"zh-TW": "引擎金鑰 · prism", "en": "Engine keys · prism"},
     "title_settings_prompts": {"zh-TW": "提問管理 · prism", "en": "Prompt management · prism"},
     "title_setup": {"zh-TW": "設定工作區 · prism", "en": "Set up your brand · prism"},
+    "discover_competitors": {"zh-TW": "🔍 探索競爭者", "en": "Discover competitors"},
 
     # --- overview page ---
     "no_brand_title": {"zh-TW": "尚未設定品牌", "en": "No brand configured yet"},

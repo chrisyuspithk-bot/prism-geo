@@ -224,3 +224,211 @@ async def generate_prompts(brand: str, competitors: list[str],
         {"text": t.format(market=market, year=date.today().year), "tag": tag}
         for t, tag in templates
     ]
+
+
+async def discover_competitors(domain: str, brand_name: str = "",
+                               lang: str = "en") -> dict:
+    """Crawl up to 20 pages of a website, understand the business, and discover
+    competitors via an LLM with internet search (Perplexity or Gemini).
+
+    Returns {"business": str, "competitors": [str], "pages_analyzed": int,
+             "error": str | None}.
+    """
+    import asyncio
+    from . import crawler
+
+    result = {"business": "", "competitors": [], "pages_analyzed": 0, "error": None}
+
+    # --- Phase 1: Crawl up to 20 pages (in thread to avoid blocking) ----------
+    urls = await asyncio.to_thread(crawler.discover, domain)
+    urls = urls[:20]
+
+    pages: list[dict] = []
+    for url in urls:
+        page = await asyncio.to_thread(crawler.fetch_page, url)
+        if page is not None:
+            pages.append(page)
+
+    result["pages_analyzed"] = len(pages)
+    if not pages:
+        result["error"] = "Could not fetch any pages from the website"
+        return result
+
+    # --- Phase 2: Build business summary from pages ---------------------------
+    titles = [p["title"] for p in pages if p["title"]]
+    headings: list[str] = []
+    for p in pages:
+        if p["headings"]:
+            headings.extend(p["headings"].split("\n"))
+    # Take a sample of page content (first 500 chars from top 5 pages)
+    content_samples: list[str] = []
+    for p in pages[:5]:
+        if p["content"]:
+            content_samples.append(p["content"][:500])
+
+    page_summary = ""
+    if titles:
+        page_summary += f"Page titles: {'; '.join(titles[:10])}\n"
+    if headings:
+        unique_h = list(dict.fromkeys(h.strip() for h in headings if len(h.strip()) > 10))
+        page_summary += f"Key headings: {'; '.join(unique_h[:20])}\n"
+    if content_samples:
+        page_summary += f"Content samples: {' | '.join(content_samples)}"
+
+    # --- Phase 3: Discover competitors via LLM with search --------------------
+    engines = keystore.provider_status()
+    # Prefer Perplexity (native search) or Gemini (Google grounding) first
+    search_engine = None
+    for name in ("perplexity", "gemini"):
+        e = next((e for e in engines if e["name"] == name and e["enabled"] and e["api_key"]), None)
+        if e:
+            search_engine = e
+            break
+    # Fall back to any available engine
+    if search_engine is None:
+        search_engine = next((e for e in engines if e["enabled"] and e["api_key"]), None)
+
+    if search_engine is None:
+        # No LLM available — try free DuckDuckGo fallback
+        competitors = await _ddg_competitor_fallback(brand_name or domain, pages)
+        if competitors:
+            result["competitors"] = competitors
+        else:
+            result["error"] = "No LLM key configured and DuckDuckGo fallback found nothing"
+        return result
+
+    key = search_engine["api_key"]
+    base = search_engine["base_url"]
+    model = search_engine["model"]
+    engine_name = search_engine["name"]
+
+    if lang == "zh-TW":
+        ask = (
+            f"你正在分析一個品牌網站。以下是從該網站爬取的 {len(pages)} 個頁面摘要：\n\n"
+            f"網域：{domain}\n"
+            f"品牌名稱（如果知道）：{brand_name or '請從內容推斷'}\n\n"
+            f"{page_summary}\n\n"
+            f"請執行以下兩個任務：\n"
+            f"1. 用 2-3 句簡短描述呢個品牌嘅業務性質同市場定位（用繁體中文）。\n"
+            f"2. 搜尋互聯網，列出佢嘅主要競爭對手（8-15 個品牌名稱），"
+            f"只限真實存在嘅品牌。\n\n"
+            f"請只回傳以下 JSON 格式，唔好加任何 markdown 或其他文字：\n"
+            f'{{"business": "業務描述", "competitors": ["品牌A", "品牌B", ...]}}'
+        )
+    else:
+        ask = (
+            f"You are analyzing a brand website. Here's a summary of {len(pages)} "
+            f"pages crawled from the site:\n\n"
+            f"Domain: {domain}\n"
+            f"Brand name (if known): {brand_name or 'please infer from content'}\n\n"
+            f"{page_summary}\n\n"
+            f"Please do two things:\n"
+            f"1. Describe the brand's business nature and market position in 2-3 "
+            f"sentences.\n"
+            f"2. Search the web and list its main competitors (8-15 real brand names).\n\n"
+            f"Return ONLY a JSON object in this format, no markdown or other text:\n"
+            f'{{"business": "description here", "competitors": ["Brand A", "Brand B", ...]}}'
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            if engine_name == "gemini":
+                url = f"{base.rstrip('/')}/models/{model}:generateContent?key={key}"
+                resp = await client.post(url, json={
+                    "contents": [{"parts": [{"text": ask}]}],
+                    "tools": [{"google_search": {}}],
+                })
+                resp.raise_for_status()
+                data = resp.json()
+                raw = data["candidates"][0]["content"]["parts"][0]["text"]
+            else:
+                resp = await client.post(
+                    f"{base.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {key}"},
+                    json={"model": model, "temperature": 0.4,
+                          "messages": [{"role": "user", "content": ask}]},
+                )
+                resp.raise_for_status()
+                raw = resp.json()["choices"][0]["message"]["content"]
+
+        match = re.search(r"\{.*\}", raw, re.S)
+        if match:
+            parsed = json.loads(match.group(0))
+            result["business"] = str(parsed.get("business", "")).strip()
+            comps = parsed.get("competitors", [])
+            if isinstance(comps, list):
+                cleaned: list[str] = []
+                for c in comps:
+                    name = str(c).strip()
+                    # Skip entries that look like sentences/descriptions, not brand names
+                    if len(name) > 60:
+                        continue
+                    if any(ch in name for ch in ("包括", "還包括", "替代方案", "also ", "includes ", "alternatives")):
+                        continue
+                    # Strip parenthetical context with CJK characters
+                    name = re.sub(r"\s*\([^)]*[\u4e00-\u9fff][^)]*\)", "", name).strip()
+                    if name and len(name) > 1:
+                        cleaned.append(name)
+                result["competitors"] = cleaned
+    except Exception as exc:
+        result["error"] = f"LLM competitor discovery failed: {str(exc)[:200]}"
+        # Try DuckDuckGo fallback
+        competitors = await _ddg_competitor_fallback(brand_name or domain, pages)
+        if competitors:
+            result["competitors"] = competitors
+
+    return result
+
+
+async def _ddg_competitor_fallback(query: str, pages: list[dict]) -> list[str]:
+    """Free DuckDuckGo fallback: search for competitors of this brand."""
+    import asyncio
+    # Build a search query from page titles/headings
+    terms = query
+    if not terms:
+        for p in pages[:3]:
+            if p["title"]:
+                parts = re.split(r"[|—–-]", p["title"])
+                terms = parts[0].strip()
+                break
+        if not terms:
+            terms = pages[0].get("headings", "").split("\n")[0] if pages else ""
+    if not terms:
+        return []
+
+    search_q = f'"{terms}" competitors similar brands'
+
+    def _fetch():
+        try:
+            resp = httpx.get(
+                f"https://api.duckduckgo.com/?q={quote(search_q)}&format=json&no_html=1&skip_disambig=1",
+                timeout=10)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception:
+            return None
+
+    data = await asyncio.to_thread(_fetch)
+    if data is None:
+        return []
+
+    # Extract potential brand names from RelatedTopics and Abstract
+    names: list[str] = []
+    if data.get("AbstractText"):
+        names.append(data["AbstractText"])
+    for topic in data.get("RelatedTopics", []):
+        text = topic.get("Text", "")
+        if text:
+            names.append(text)
+
+    # Simple brand-name extraction: capitalized words, multi-word names
+    competitors: set[str] = set()
+    brand_re = re.compile(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})\b")
+    for line in names:
+        for m in brand_re.finditer(line):
+            name = m.group(1).strip()
+            if len(name) > 2 and name.lower() not in ("the", "and", "for", "best", "top", "most"):
+                competitors.add(name)
+
+    return sorted(competitors)[:15]
+

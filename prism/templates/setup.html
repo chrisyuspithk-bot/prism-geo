@@ -14,12 +14,19 @@
   </div>
   <div>
     <label class="mb-1 block text-sm font-medium">{{ t('setup_website_label') }} <span class="font-normal text-slate-400">({{ t('setup_website_hint') }})</span></label>
-    <input name="website" value="{{ own.website if own else '' }}" placeholder="https://www.allbirds.com"
-           class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+    <div class="flex gap-2">
+      <input name="website" id="setup-website" value="{{ own.website if own else '' }}" placeholder="https://www.allbirds.com"
+             class="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+      <button type="button" id="discover-btn"
+              class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50">
+        {{ t('discover_competitors') }}
+      </button>
+    </div>
+    <div id="discover-status" class="mt-2 hidden text-xs text-slate-500"></div>
   </div>
   <div>
     <label class="mb-1 block text-sm font-medium">{{ t('setup_competitors_label') }} <span class="font-normal text-slate-400">({{ t('setup_competitors_hint') }})</span></label>
-    <textarea name="competitors" rows="3" placeholder="Nike, Adidas, Allbirds"
+    <textarea name="competitors" id="setup-competitors" rows="3" placeholder="Nike, Adidas, Allbirds"
            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">{{ competitors | join(', ') }}</textarea>
   </div>
   <label class="flex items-start gap-3 rounded-lg bg-slate-50 p-4">
@@ -50,6 +57,65 @@
 </div>
 
 <script>
+const discoverBtn = document.getElementById('discover-btn');
+const discoverStatus = document.getElementById('discover-status');
+const websiteInput = document.getElementById('setup-website');
+const competitorsTextarea = document.getElementById('setup-competitors');
+const nameInput = document.querySelector('input[name="name"]');
+
+discoverBtn.addEventListener('click', async function() {
+  const website = websiteInput.value.trim();
+  if (!website) {
+    discoverStatus.classList.remove('hidden');
+    discoverStatus.textContent = 'Please enter a website URL first.';
+    discoverStatus.className = 'mt-2 text-xs text-amber-600';
+    return;
+  }
+
+  discoverBtn.disabled = true;
+  discoverStatus.classList.remove('hidden');
+  discoverStatus.textContent = 'Crawling website pages…';
+  discoverStatus.className = 'mt-2 text-xs text-slate-500';
+
+  try {
+    const resp = await fetch('/api/setup/discover-competitors', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        domain: website,
+        brand_name: nameInput.value.trim()
+      })
+    });
+    const data = await resp.json();
+
+    if (data.error && !data.competitors.length) {
+      discoverStatus.textContent = data.error;
+      discoverStatus.className = 'mt-2 text-xs text-amber-600';
+      return;
+    }
+
+    if (data.competitors.length) {
+      competitorsTextarea.value = data.competitors.join(', ');
+    }
+
+    let msg = `Found ${data.competitors.length} competitors`;
+    if (data.business) msg += ` — ${data.business.slice(0, 80)}…`;
+    if (data.pages_analyzed) msg += ` (${data.pages_analyzed} pages analyzed)`;
+    discoverStatus.textContent = msg;
+    discoverStatus.className = 'mt-2 text-xs text-emerald-600';
+
+    if (data.error) {
+      discoverStatus.textContent += ' ⚠ ' + data.error;
+      discoverStatus.className = 'mt-2 text-xs text-amber-600';
+    }
+  } catch (err) {
+    discoverStatus.textContent = 'Network error — please try again.';
+    discoverStatus.className = 'mt-2 text-xs text-red-500';
+  } finally {
+    discoverBtn.disabled = false;
+  }
+});
+
 document.getElementById('setup-form').addEventListener('submit', function() {
   const overlay = document.getElementById('loading-overlay');
   overlay.classList.remove('hidden');
