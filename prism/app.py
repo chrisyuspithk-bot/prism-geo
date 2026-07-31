@@ -762,35 +762,38 @@ async def api_geo_optimize(request: Request):
 
     if lang == "zh-TW":
         geo_prompt = (
-            "你是生成式引擎優化（GEO）專家。請改寫以下內容，使其有最高機會被 AI 回答引擎"
-            "（ChatGPT、Perplexity、Gemini、DeepSeek 等）引用或推薦。\n\n"
+            "你是生成式引擎優化（GEO）專家。請用搜尋引擎查證事實，然後改寫以下內容，"
+            "使其有最高機會被 AI 回答引擎（ChatGPT、Perplexity、Gemini、DeepSeek 等）"
+            "引用或推薦。\n\n"
             "嚴格遵循以下原則：\n\n"
-            "- 盡可能加入具體統計數據與量化資訊\n"
-            "- 內聯引用權威來源\n"
+            "- 用搜尋引擎查證所有數據和主張，只用可驗證的事實\n"
+            "- 加入具體統計數據與量化資訊（必須來自搜尋結果）\n"
+            "- 內聯引用權威來源，必須附上完整 URL\n"
             "- 在適當處加入具名專家的直接引言\n"
-            "- 結構要便於提取：開頭直接給出清晰答案、使用短小且獨立的段落、問句式標題、列表與表格\n"
+            "- 結構要便於提取：開頭直接給出清晰答案、使用短小且獨立的段落、問句式標題、列表\n"
             "- 語氣簡潔、自信、具權威感\n"
-            "- 避免模糊主張與空話\n\n"
+            "- 避免模糊主張與空話\n"
+            "- 如果搜尋唔到某個數據，直接標明「未有公開數據」，唔好自己作數\n\n"
             f"原始內容：\n\n{content}\n\n"
-            "請先輸出優化後的版本，然後簡要列出你做的主要 GEO 改進點。"
+            "請輸出純文字版本，唔好用 markdown 格式。引用來源必須寫完整 URL。"
         )
     else:
         geo_prompt = (
-            "You are an expert in Generative Engine Optimization (GEO). Rewrite the "
-            "following content so it has the highest possible chance of being cited or "
-            "recommended by AI answer engines (ChatGPT, Perplexity, Gemini, DeepSeek, "
-            "etc.).\n\n"
+            "You are a Generative Engine Optimization (GEO) expert. Use search to verify "
+            "facts, then rewrite the following content for maximum chance of being cited "
+            "by AI answer engines (ChatGPT, Perplexity, Gemini, DeepSeek, etc.).\n\n"
             "Follow these principles strictly:\n\n"
-            "- Add specific statistics and quantifiable data wherever possible\n"
-            "- Cite authoritative sources inline\n"
+            "- Search the internet to verify all claims — only use verifiable facts\n"
+            "- Add specific statistics and quantifiable data (must come from search results)\n"
+            "- Cite authoritative sources inline with full URLs\n"
             "- Include direct expert quotations when relevant\n"
-            "- Structure content for easy extraction: lead with clear answers, use short "
-            "self-contained paragraphs, question-style headings, lists and tables\n"
-            "- Write in a concise, confident, and authoritative tone\n"
-            "- Avoid vague claims and fluff\n\n"
+            "- Structure for easy extraction: lead with clear answers, short self-contained "
+            "paragraphs, question-style headings, lists\n"
+            "- Write in a concise, confident, authoritative tone\n"
+            "- Avoid vague claims and fluff\n"
+            "- If you cannot find data for a claim, say so — never fabricate numbers\n\n"
             f"Original content:\n\n{content}\n\n"
-            "Provide the optimized version first, then briefly list the key GEO "
-            "improvements you made."
+            "Output plain text only, no markdown. Cite sources with full URLs inline."
         )
 
     from .keystore import active_engines
@@ -798,7 +801,19 @@ async def api_geo_optimize(request: Request):
     if not engines:
         return JSONResponse({"error": "No LLM engine configured"}, 400)
 
-    engine = engines[0]
+    # Prefer Gemini (Google Search grounding) for fact-checked output.
+    # Failing that, Perplexity (native web search). Then DeepSeek.
+    engine = None
+    for name in ("gemini", "perplexity", "deepseek", "chatgpt", "claude", "custom"):
+        for e in engines:
+            if e["name"] == name and e["api_key"]:
+                engine = e
+                break
+        if engine:
+            break
+    if engine is None:
+        return JSONResponse({"error": "No LLM engine configured"}, 400)
+
     key = engine["api_key"]
     base = engine["base_url"]
     model = engine["model"]
@@ -807,10 +822,11 @@ async def api_geo_optimize(request: Request):
     def _call_llm():
         try:
             if engine_name == "gemini":
+                body = {"contents": [{"parts": [{"text": geo_prompt}]}]}
+                body["tools"] = [{"google_search": {}}]
                 resp = httpx.post(
                     f"{base}/models/{model}:generateContent?key={key}",
-                    json={"contents": [{"parts": [{"text": geo_prompt}]}]},
-                    timeout=120,
+                    json=body, timeout=120,
                 )
                 resp.raise_for_status()
                 data = resp.json()
@@ -832,7 +848,8 @@ async def api_geo_optimize(request: Request):
     if raw.startswith("__ERROR__:"):
         return JSONResponse({"error": raw[9:]}, 500)
 
-    return JSONResponse({"optimized": raw.strip()})
+    cleaned = _strip_md(raw.strip())
+    return JSONResponse({"optimized": cleaned, "engine": engine_name})
 
 
 @app.post("/api/generate-keywords")
