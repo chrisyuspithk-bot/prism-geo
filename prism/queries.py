@@ -313,18 +313,27 @@ def prompt_detail(conn, prompt_id: int, days: int = 30,
     tenant_id = prompt["tenant_id"]
     own = q1(conn, "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 1", (tenant_id,))
 
-    # Runs with pagination
+    # Runs grouped into job batches, newest first. Jobs run sequentially so a
+    # batch's runs are contiguous by ran_at; ordering by time (not job_id) keeps
+    # legacy runs without a job_id in their correct chronological position.
+    # Paginate by batch so a batch is never split across pages.
     runs_total = q1(conn,
         "SELECT COUNT(*) AS n FROM runs WHERE prompt_id = ?", (prompt_id,))["n"]
-    runs_offset = max(0, (runs_page - 1) * RUNS_PER)
-    runs = q(
+    runs_rows = q(
         conn,
         """SELECT r.*, m.name AS model_name FROM runs r
            JOIN models m ON m.id = r.model_id
-           WHERE r.prompt_id = ? ORDER BY r.job_id DESC, r.ran_at DESC LIMIT ? OFFSET ?""",
-        (prompt_id, RUNS_PER, runs_offset),
+           WHERE r.prompt_id = ? ORDER BY r.ran_at DESC, r.id DESC""",
+        (prompt_id,),
     )
-    runs_pages = max(1, (runs_total + RUNS_PER - 1) // RUNS_PER)
+    batches: list[dict] = []
+    for row in runs_rows:
+        if batches and batches[-1]["job_id"] == row["job_id"]:
+            batches[-1]["runs"].append(row)
+        else:
+            batches.append({"job_id": row["job_id"], "runs": [row]})
+    runs_pages = max(1, (len(batches) + RUNS_PER - 1) // RUNS_PER)
+    runs = batches[(runs_page - 1) * RUNS_PER : runs_page * RUNS_PER]
 
     # Mentions (no pagination — at most ~10 brands)
     mention_rows = q(
