@@ -429,7 +429,7 @@ def settings_keys(request: Request):
         context=ctx(request, page="settings-keys", providers=keystore.provider_status(),
                     embedding_key=emb_key, embedding_source=emb_source,
                     schedule_enabled=(enabled["value"] == "1") if enabled else True,
-                    schedule_hour=int(hour["value"]) if hour else 2))
+                    schedule_hour=int(hour["value"]) if hour else 0))
 
 
 @app.post("/settings/keys")
@@ -494,7 +494,7 @@ def clear_key(provider: str):
 
 
 @app.post("/settings/schedule")
-def save_schedule(enabled: str = Form("0"), hour: str = Form("2")):
+def save_schedule(enabled: str = Form("0"), hour: str = Form("0")):
     keystore.set_value("schedule_enabled", "1" if enabled == "1" else "0")
     keystore.set_value("schedule_hour", hour)
     return RedirectResponse("/settings/keys?saved=1", status_code=303)

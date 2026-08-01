@@ -1,3 +1,6 @@
+import datetime as dt
+import json
+
 import pytest
 
 from prism import db
@@ -13,6 +16,7 @@ def conn(tmp_path, monkeypatch):
         c.execute("INSERT INTO brands (name, slug, is_own, tenant_id) VALUES ('Nike', 'nike', 1, 1)")
         c.execute("INSERT INTO models (name) VALUES ('stub')")
         c.execute("INSERT INTO prompts (text, tenant_id) VALUES ('best running shoes?', 1)")
+        c.commit()  # visible to other connections (scheduler opens its own)
         yield c
 
 
@@ -56,3 +60,58 @@ def test_prompt_detail_batch_not_split_across_pages(conn):
     assert len(data["runs"]) == 1
     assert len(data["runs"][0]["runs"]) == 6
     assert data["runs_pages"] == 1
+
+
+@pytest.mark.parametrize("legacy", ["2", "16"])
+def test_migration_normalizes_legacy_schedule_hour(tmp_path, legacy):
+    path = tmp_path / "test.db"
+    db.init_db(path)
+    with db.connect(path) as c:
+        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('schedule_hour', ?)", (legacy,))
+    # re-running init_db applies _migrate
+    db.init_db(path)
+    with db.connect(path) as c:
+        val = c.execute("SELECT value FROM settings WHERE key = 'schedule_hour'").fetchone()["value"]
+    assert val == "0"
+
+
+def _fake_datetime(fixed: dt.datetime):
+    return type("FakeDT", (), {"now": staticmethod(lambda tz=None: fixed)})
+
+
+def test_maybe_run_fires_at_midnight_hkt(conn, monkeypatch):
+    """16:00 UTC == 00:00 HKT — the daily run must be queued."""
+    from prism import scheduler
+
+    fixed = dt.datetime(2026, 7, 31, 16, 0, 30, tzinfo=dt.timezone.utc)
+    monkeypatch.setattr(scheduler, "datetime", _fake_datetime(fixed))
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    scheduler._last_rundate = ""
+
+    scheduler._maybe_run(0)
+
+    with db.connect() as c:
+        jobs = c.execute("SELECT kind, payload FROM jobs").fetchall()
+    assert len(jobs) == 1
+    assert jobs[0]["kind"] == "run_all"
+    assert json.loads(jobs[0]["payload"])["tenant_id"] == 1
+
+    # guard: must not fire a second time on the same day
+    scheduler._maybe_run(0)
+    with db.connect() as c:
+        assert c.execute("SELECT COUNT(*) n FROM jobs").fetchone()["n"] == 1
+
+
+def test_maybe_run_skips_outside_target_hour(conn, monkeypatch):
+    """23:59 HKT is still hour 23, not 0 — nothing should be queued."""
+    from prism import scheduler
+
+    fixed = dt.datetime(2026, 7, 31, 15, 59, 30, tzinfo=dt.timezone.utc)
+    monkeypatch.setattr(scheduler, "datetime", _fake_datetime(fixed))
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    scheduler._last_rundate = ""
+
+    scheduler._maybe_run(0)
+
+    with db.connect() as c:
+        assert c.execute("SELECT COUNT(*) n FROM jobs").fetchone()["n"] == 0

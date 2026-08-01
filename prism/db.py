@@ -204,9 +204,13 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute(
             "UPDATE tenants SET name = ?, website = ? WHERE id = 1 AND name = 'Default'",
             (own["name"], own["website"]))
-    # Fix old schedule_hour default (was 2 UTC; _maybe_run now uses HKT hour)
+    # Normalize legacy schedule_hour values to the current HKT-hour semantics.
+    # '2' was the old default (previously read as UTC) and '16' is what the old
+    # migration wrongly rewrote it to ("16 UTC = 00:00 GMT+8") — but _maybe_run
+    # compares against the HKT hour. Both mean the operator never picked an
+    # hour, so map them to the HKT midnight default.
     conn.execute(
-        "UPDATE settings SET value = '0' WHERE key = 'schedule_hour' AND value = '2'")
+        "UPDATE settings SET value = '0' WHERE key = 'schedule_hour' AND value IN ('2', '16')")
 
 
 @contextmanager

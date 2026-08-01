@@ -36,6 +36,8 @@ def _set_defaults() -> None:
 
 async def _scheduler() -> None:
     _set_defaults()
+    enabled, hour = _get_config()
+    print(f"[scheduler] started: enabled={enabled}, hour={hour:02d}:00 HKT (GMT+8)", flush=True)
     while True:
         try:
             enabled, hour = _get_config()
