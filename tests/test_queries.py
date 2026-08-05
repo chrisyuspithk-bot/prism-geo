@@ -75,43 +75,39 @@ def test_migration_normalizes_legacy_schedule_hour(tmp_path, legacy):
     assert val == "0"
 
 
-def _fake_datetime(fixed: dt.datetime):
-    return type("FakeDT", (), {"now": staticmethod(lambda tz=None: fixed)})
-
-
-def test_maybe_run_fires_at_midnight_hkt(conn, monkeypatch):
-    """16:00 UTC == 00:00 HKT — the daily run must be queued."""
+def test_fire_creates_run_all_job(conn, monkeypatch):
+    """_fire must create one run_all job per tenant with active prompts."""
     from prism import scheduler
 
-    fixed = dt.datetime(2026, 7, 31, 16, 0, 30, tzinfo=dt.timezone.utc)
-    monkeypatch.setattr(scheduler, "datetime", _fake_datetime(fixed))
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
-    scheduler._last_rundate = ""
 
-    scheduler._maybe_run(0)
+    scheduler._fire(0, "2026-07-31")
 
     with db.connect() as c:
-        jobs = c.execute("SELECT kind, payload FROM jobs").fetchall()
-    assert len(jobs) == 1
-    assert jobs[0]["kind"] == "run_all"
-    assert json.loads(jobs[0]["payload"])["tenant_id"] == 1
-
-    # guard: must not fire a second time on the same day
-    scheduler._maybe_run(0)
-    with db.connect() as c:
-        assert c.execute("SELECT COUNT(*) n FROM jobs").fetchone()["n"] == 1
+        rows = c.execute("SELECT kind, payload FROM jobs").fetchall()
+    assert len(rows) == 1
+    assert rows[0]["kind"] == "run_all"
+    assert json.loads(rows[0]["payload"])["tenant_id"] == 1
 
 
-def test_maybe_run_skips_outside_target_hour(conn, monkeypatch):
-    """23:59 HKT is still hour 23, not 0 — nothing should be queued."""
+def test_already_ran_today_detects_existing_job(conn):
+    """_already_ran_today returns True only when a run_all job exists on the HKT date."""
     from prism import scheduler
 
-    fixed = dt.datetime(2026, 7, 31, 15, 59, 30, tzinfo=dt.timezone.utc)
-    monkeypatch.setattr(scheduler, "datetime", _fake_datetime(fixed))
-    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
-    scheduler._last_rundate = ""
+    # No job yet — should return False
+    hkt = dt.datetime(2026, 7, 31, 0, 30, tzinfo=dt.timezone(dt.timedelta(hours=8)))
+    assert not scheduler._already_ran_today(hkt)
 
-    scheduler._maybe_run(0)
+    # Insert a run_all job with a specific UTC created_at that maps to 2026-07-31 HKT
+    # 2026-07-31 00:30 HKT = 2026-07-30 16:30 UTC
+    conn.execute(
+        "INSERT INTO jobs (kind, status, total, created_at) VALUES ('run_all', 'done', 1, ?)",
+        ("2026-07-30 16:30:00",))
+    conn.execute("COMMIT")
 
-    with db.connect() as c:
-        assert c.execute("SELECT COUNT(*) n FROM jobs").fetchone()["n"] == 0
+    # Should now return True for 2026-07-31 HKT
+    assert scheduler._already_ran_today(hkt)
+
+    # Different day — should return False
+    hkt_next = dt.datetime(2026, 8, 1, 0, 30, tzinfo=dt.timezone(dt.timedelta(hours=8)))
+    assert not scheduler._already_ran_today(hkt_next)
