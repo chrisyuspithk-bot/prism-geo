@@ -24,6 +24,7 @@ from fastapi.templating import Jinja2Templates
 from . import audit_report, i18n, jobs, keystore, queries, report, scheduler, workspace
 from . import crawler, chunk, drafts, embeddings, rag
 from .db import connect, init_db, q, q1
+from .extract import gemini_answer_text
 from .onboarding import analyze_website, discover_competitors, discover_key_areas, generate_prompts
 
 BASE = Path(__file__).resolve().parent
@@ -875,7 +876,7 @@ async def api_geo_optimize(request: Request):
                 )
                 resp.raise_for_status()
                 data = resp.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"]
+                return gemini_answer_text(data)
             else:
                 resp = httpx.post(
                     f"{base}/chat/completions",
@@ -1113,7 +1114,7 @@ async def api_generate_keywords(request: Request):
                 )
                 resp.raise_for_status()
                 data = resp.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"]
+                return gemini_answer_text(data)
             else:
                 resp = httpx.post(
                     f"{base}/chat/completions",

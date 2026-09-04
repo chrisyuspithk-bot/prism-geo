@@ -139,3 +139,15 @@ def domain_of(url: str) -> str:
     """Root domain (no www) of a URL or bare domain string."""
     host = urlparse(url if "://" in url else f"https://{url}").netloc.lower()
     return host[4:] if host.startswith("www.") else host
+
+
+def gemini_answer_text(data: dict) -> str:
+    """The final answer text from a Gemini generateContent response.
+
+    Thinking models (Gemini 3.x) emit a leading ``thought`` part; skip those
+    and join the remaining text parts so callers get the answer, not reasoning.
+    """
+    parts = data["candidates"][0]["content"]["parts"]
+    texts = [p.get("text", "") for p in parts if p.get("text") and not p.get("thought")]
+    return "\n".join(texts).strip()
+

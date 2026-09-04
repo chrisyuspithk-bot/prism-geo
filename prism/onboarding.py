@@ -19,6 +19,7 @@ from urllib.parse import quote
 import httpx
 
 from .extract import domain_of  # noqa: F401  (re-export)
+from .extract import gemini_answer_text
 from . import keystore
 
 TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
@@ -194,7 +195,7 @@ async def generate_prompts(brand: str, competitors: list[str],
                         json={"contents": [{"parts": [{"text": ask}]}]},
                     )
                     resp.raise_for_status()
-                    raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                    raw = gemini_answer_text(resp.json())
                 else:
                     resp = await client.post(
                         f"{api_base.rstrip('/')}/chat/completions",
@@ -340,7 +341,7 @@ async def discover_competitors(domain: str, brand_name: str = "",
                 })
                 resp.raise_for_status()
                 data = resp.json()
-                raw = data["candidates"][0]["content"]["parts"][0]["text"]
+                raw = gemini_answer_text(data)
             else:
                 resp = await client.post(
                     f"{base.rstrip('/')}/chat/completions",
@@ -516,7 +517,7 @@ async def discover_key_areas(domain: str, brand_name: str = "",
                     "contents": [{"parts": [{"text": ask}]}],
                 })
                 resp.raise_for_status()
-                raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                raw = gemini_answer_text(resp.json())
             else:
                 resp = await client.post(
                     f"{base.rstrip('/')}/chat/completions",

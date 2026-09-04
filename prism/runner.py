@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 import httpx
 
 from .db import connect, q1
-from .extract import find_citations, find_mentions
+from .extract import find_citations, find_mentions, gemini_answer_text
 from .workspace import alias_map, brand_domains
 
 SYSTEM_PROMPT = (
@@ -56,7 +56,7 @@ async def _query_gemini(prompt: str, key: str, base: str, model: str) -> tuple[s
                 block = data.get("promptFeedback", {}).get("blockReason", "")
                 reason = f" (blocked: {block})" if block else ""
                 return "error", f"Gemini returned no candidates{reason}. Raw: {_json.dumps(data)[:500]}"
-            return "ok", data["candidates"][0]["content"]["parts"][0]["text"]
+            return "ok", gemini_answer_text(data)
     except Exception as exc:
         return "error", str(exc)
 

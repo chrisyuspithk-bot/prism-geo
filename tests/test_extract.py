@@ -1,4 +1,4 @@
-from prism.extract import categorize, find_citations, find_mentions, normalize_domain
+from prism.extract import categorize, find_citations, find_mentions, gemini_answer_text, normalize_domain
 
 
 def test_find_mentions_ranks_by_first_occurrence():
@@ -46,3 +46,19 @@ def test_categorize_brand_domain_wins():
 
 def test_normalize_domain():
     assert normalize_domain("https://www.Example.com/path?q=1") == "example.com"
+
+
+def test_gemini_answer_text_skips_thought_parts():
+    data = {"candidates": [{"content": {"parts": [
+        {"thought": True, "text": "Let me reason about this..."},
+        {"text": "The final answer is SecurePro."},
+    ]}}]}
+    assert gemini_answer_text(data) == "The final answer is SecurePro."
+
+
+def test_gemini_answer_text_joins_multiple_text_parts():
+    data = {"candidates": [{"content": {"parts": [
+        {"text": "First paragraph."},
+        {"text": "Second paragraph."},
+    ]}}]}
+    assert gemini_answer_text(data) == "First paragraph.\nSecond paragraph."
