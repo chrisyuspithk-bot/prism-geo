@@ -61,7 +61,8 @@ async def _query_gemini(prompt: str, key: str, base: str, model: str) -> tuple[s
         return "error", str(exc)
 
 
-async def _query_openai(prompt: str, key: str, base: str, model: str) -> tuple[str, str]:
+async def _query_openai(prompt: str, key: str, base: str, model: str,
+                        name: str = "") -> tuple[str, str]:
     """Query any OpenAI-compatible chat/completions endpoint."""
     payload = {
         "model": model,
@@ -69,8 +70,10 @@ async def _query_openai(prompt: str, key: str, base: str, model: str) -> tuple[s
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ],
-        "temperature": 0.7,
     }
+    # Perplexity's Sonar API rejects/misbehaves with an explicit temperature.
+    if name != "perplexity":
+        payload["temperature"] = 0.7
     try:
         async with httpx.AsyncClient(timeout=90) as client:
             resp = await client.post(
@@ -78,7 +81,13 @@ async def _query_openai(prompt: str, key: str, base: str, model: str) -> tuple[s
                 headers={"Authorization": f"Bearer {key}"},
                 json=payload,
             )
-            resp.raise_for_status()
+            if resp.status_code >= 400:
+                detail = resp.text[:500]
+                try:
+                    detail = str(resp.json())
+                except Exception:
+                    pass
+                return "error", f"{name or 'engine'} {resp.status_code}: {detail}"
             data = resp.json()
             return "ok", data["choices"][0]["message"]["content"]
     except Exception as exc:
@@ -100,7 +109,7 @@ async def query_engine(prompt: str, *, engine: dict | None = None) -> tuple[str,
 
     if name == "gemini":
         return await _query_gemini(prompt, key, base, mdl)
-    return await _query_openai(prompt, key, base, mdl)
+    return await _query_openai(prompt, key, base, mdl, name=name)
 
 
 def store_run(conn, prompt_id: int, model_id: int, status: str, text: str,
