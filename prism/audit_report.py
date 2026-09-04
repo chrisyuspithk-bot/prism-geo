@@ -303,7 +303,7 @@ def build_audit_data(tenant_id: int, days: int = 30) -> dict | None:
 
         competitors = [
             dict(c) for c in conn.execute(
-                "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 0 ORDER BY name",
+                "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 0 AND active = 1 ORDER BY name",
                 (tenant_id,),
             ).fetchall()
         ]

@@ -118,12 +118,19 @@ def own_brand(conn, tenant_id: int) -> dict | None:
 
 
 def competitors(conn, tenant_id: int) -> list:
-    return q(conn, "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 0 ORDER BY name",
+    return q(conn, "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 0 AND active = 1 ORDER BY name",
              (tenant_id,))
 
 
 def add_competitor(tenant_id: int, name: str) -> None:
     with connect() as conn:
+        existing = q1(conn,
+            "SELECT id, active FROM brands WHERE tenant_id = ? AND LOWER(name) = LOWER(?) AND is_own = 0",
+            (tenant_id, name))
+        if existing:
+            if not existing["active"]:
+                conn.execute("UPDATE brands SET active = 1 WHERE id = ?", (existing["id"],))
+            return
         conn.execute(
             "INSERT INTO brands (name, slug, aliases, is_own, tenant_id)"
             " VALUES (?, ?, ?, 0, ?)",
@@ -132,16 +139,17 @@ def add_competitor(tenant_id: int, name: str) -> None:
 
 
 def remove_competitor(tenant_id: int, brand_id: int) -> None:
+    """Soft-delete a competitor so its historical mentions survive the FK."""
     with connect() as conn:
         conn.execute(
-            "DELETE FROM brands WHERE id = ? AND tenant_id = ? AND is_own = 0",
+            "UPDATE brands SET active = 0 WHERE id = ? AND tenant_id = ? AND is_own = 0",
             (brand_id, tenant_id))
 
 
 def alias_map(conn, tenant_id: int) -> dict[str, str]:
     """Extraction alias map {lowercase alias: brand display name} for one tenant."""
     out: dict[str, str] = {}
-    for row in conn.execute("SELECT name, aliases FROM brands WHERE tenant_id = ?",
+    for row in conn.execute("SELECT name, aliases FROM brands WHERE tenant_id = ? AND active = 1",
                             (tenant_id,)):
         names = [row["name"], *[a for a in row["aliases"].split("\n") if a]]
         for a in names:

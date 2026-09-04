@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS brands (
     website TEXT DEFAULT '',
     aliases TEXT NOT NULL DEFAULT '',      -- newline-separated mention aliases
     is_own INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1,     -- 0 = soft-deleted competitor (keeps historical mentions)
     brand_id INTEGER REFERENCES brands(id), -- set for competitors -> the tracked brand
     tenant_id INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id)
 );
@@ -172,6 +173,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     brands_cols = {r["name"] for r in conn.execute("PRAGMA table_info(brands)")}
     if "aliases" not in brands_cols:
         conn.execute("ALTER TABLE brands ADD COLUMN aliases TEXT NOT NULL DEFAULT ''")
+    if "active" not in brands_cols:
+        conn.execute("ALTER TABLE brands ADD COLUMN active INTEGER NOT NULL DEFAULT 1")
     if "brand_id" not in brands_cols:
         conn.execute("ALTER TABLE brands ADD COLUMN brand_id INTEGER REFERENCES brands(id)")
     run_cols = {r["name"] for r in conn.execute("PRAGMA table_info(runs)")}

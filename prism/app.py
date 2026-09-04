@@ -130,7 +130,7 @@ def tenants_page(request: Request):
             stats = q1(conn, "SELECT COUNT(*) n FROM runs WHERE tenant_id = ?", (t["id"],))
             prompts = q1(conn, "SELECT COUNT(*) n FROM prompts WHERE tenant_id = ? AND active = 1",
                          (t["id"],))
-            comps = q1(conn, "SELECT COUNT(*) n FROM brands WHERE tenant_id = ? AND is_own = 0",
+            comps = q1(conn, "SELECT COUNT(*) n FROM brands WHERE tenant_id = ? AND is_own = 0 AND active = 1",
                        (t["id"],))
             rows.append({**t, "runs": stats["n"], "prompts": prompts["n"],
                          "competitors": comps["n"]})

@@ -413,7 +413,7 @@ def report_data(conn, tenant_id: int, days: int = 30) -> dict:
         return None
     window = f"-{days} days"
     comps = q(conn,
-        "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 0 ORDER BY name",
+        "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 0 AND active = 1 ORDER BY name",
         (tenant_id,))
 
     # Visibility overall

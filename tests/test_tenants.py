@@ -76,3 +76,40 @@ def test_overview_scoped_to_tenant(conn):
     ob = queries.overview(conn, b, 30)
     assert oa["runs"] == 1 and oa["brand"]["name"] == "Allbirds"
     assert ob["runs"] == 0 and ob["brand"]["name"] == "Acme"
+
+
+def test_remove_competitor_soft_deletes_and_keeps_mentions(conn):
+    """Deleting a competitor with historical mentions must not fail or erase them."""
+    tid = workspace.create_tenant("SecurePro", "https://securepro.com")
+    workspace.add_competitor(tid, "Guardforce")
+
+    with db.connect() as c:
+        gid = c.execute("SELECT id FROM brands WHERE tenant_id=? AND name='Guardforce'",
+                        (tid,)).fetchone()["id"]
+        c.execute("INSERT INTO models (name) VALUES ('stub')")
+        c.execute("INSERT INTO prompts (text, tenant_id) VALUES ('p', ?)", (tid,))
+        pid = c.execute("SELECT id FROM prompts WHERE tenant_id=?", (tid,)).fetchone()["id"]
+        c.execute("INSERT INTO runs (prompt_id, model_id, response_text, status, tenant_id)"
+                  " VALUES (?, 1, 'x', 'ok', ?)", (pid, tid))
+        rid = c.execute("SELECT id FROM runs WHERE tenant_id=?", (tid,)).fetchone()["id"]
+        c.execute("INSERT INTO mentions (run_id, brand_id, position, count) VALUES (?, ?, 1, 1)",
+                  (rid, gid))
+
+    workspace.remove_competitor(tid, gid)
+
+    with db.connect() as c:
+        assert [r["name"] for r in workspace.competitors(c, tid)] == []
+        assert c.execute("SELECT COUNT(*) n FROM mentions WHERE brand_id=?",
+                         (gid,)).fetchone()["n"] == 1
+        assert c.execute("SELECT active FROM brands WHERE id=?",
+                         (gid,)).fetchone()["active"] == 0
+
+    # Re-adding reactivates rather than creating a duplicate brand row.
+    workspace.add_competitor(tid, "Guardforce")
+    with db.connect() as c:
+        assert [r["name"] for r in workspace.competitors(c, tid)] == ["Guardforce"]
+        n = c.execute(
+            "SELECT COUNT(*) n FROM brands WHERE tenant_id=? AND name='Guardforce' AND is_own=0",
+            (tid,)).fetchone()["n"]
+        assert n == 1
+
