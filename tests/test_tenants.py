@@ -113,3 +113,15 @@ def test_remove_competitor_soft_deletes_and_keeps_mentions(conn):
             (tid,)).fetchone()["n"]
         assert n == 1
 
+
+def test_migrate_removes_empty_duplicate_tenant(conn):
+    """An empty 'SecurePro' shell left by the old rename bug is dropped."""
+    conn.execute("UPDATE tenants SET name='SecurePro' WHERE id=1")
+    conn.execute("INSERT INTO tenants (id, name, slug, website) VALUES (2, 'SecurePro', 'securepro', '')")
+    conn.execute("INSERT INTO brands (name, slug, is_own, tenant_id) VALUES ('SecurePro', 'securepro', 1, 2)")
+
+    db._migrate(conn)
+
+    rows = conn.execute("SELECT id, name FROM tenants ORDER BY id").fetchall()
+    assert [(r["id"], r["name"]) for r in rows] == [(2, "SecurePro")]
+

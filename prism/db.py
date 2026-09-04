@@ -203,14 +203,25 @@ def _migrate(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_runs_tenant ON runs(tenant_id, ran_at)")
 
-    # Tenant 1 mirrors the pre-existing tracked brand (is_own = 1), if any.
+    # Ensure a tenant exists for rows migrated with tenant_id = 1.
     conn.execute(
         "INSERT OR IGNORE INTO tenants (id, name, slug, website) VALUES (1, 'Default', 'default', '')")
-    own = conn.execute("SELECT name, website FROM brands WHERE is_own = 1 LIMIT 1").fetchone()
-    if own:
-        conn.execute(
-            "UPDATE tenants SET name = ?, website = ? WHERE id = 1 AND name = 'Default'",
-            (own["name"], own["website"]))
+    # Remove empty duplicate tenants left by an earlier migration that renamed
+    # the id=1 "Default" shell to the own brand's name, duplicating a real
+    # client. Only deletes shells with zero data that share a name with
+    # another tenant — the real client is never empty.
+    conn.execute(
+        """
+        DELETE FROM tenants
+        WHERE NOT EXISTS (SELECT 1 FROM brands b WHERE b.tenant_id = tenants.id)
+          AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.tenant_id = tenants.id)
+          AND NOT EXISTS (SELECT 1 FROM prompts p WHERE p.tenant_id = tenants.id)
+          AND NOT EXISTS (SELECT 1 FROM sites s WHERE s.tenant_id = tenants.id)
+          AND EXISTS (
+              SELECT 1 FROM tenants t2
+              WHERE t2.name = tenants.name AND t2.id != tenants.id
+          )
+        """)
     # Normalize legacy schedule_hour values to the current HKT-hour semantics.
     # '2' was the old default (previously read as UTC) and '16' is what the old
     # migration wrongly rewrote it to ("16 UTC = 00:00 GMT+8") — but _maybe_run
