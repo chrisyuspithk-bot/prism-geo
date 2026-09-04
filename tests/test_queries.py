@@ -61,6 +61,24 @@ def test_prompt_detail_batch_not_split_across_pages(conn):
     assert len(data["runs"][0]["runs"]) == 6
     assert data["runs_pages"] == 1
 
+def test_overview_excludes_error_runs(conn):
+    """Overview 'evaluations' and 'last_run' must ignore error runs (ok only)."""
+    from prism import queries
+
+    conn.execute(
+        "INSERT INTO runs (prompt_id, model_id, ran_at, response_text, status, tenant_id)"
+        " VALUES (1, 1, '2026-09-03 16:10:00', 'text', 'ok', 1)")
+    conn.execute(
+        "INSERT INTO runs (prompt_id, model_id, ran_at, response_text, status, error, tenant_id)"
+        " VALUES (1, 1, '2026-09-04 00:00:00', '', 'error', 'boom', 1)")
+
+    o = queries.overview(conn, 1, 30)
+    v = queries.visibility_page(conn, 1, 30)
+    assert o["runs"] == 1
+    assert v["run_count"] == 1
+    assert o["runs"] == v["run_count"]
+    assert o["last_run"] == "2026-09-03 16:10:00"
+
 
 @pytest.mark.parametrize("legacy", ["2", "16"])
 def test_migration_normalizes_legacy_schedule_hour(tmp_path, legacy):

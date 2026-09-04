@@ -22,14 +22,16 @@ def overview(conn, tenant_id: int, days: int = 30, model_id: int | None = None) 
     mf, mp = _model_filter(model_id)
     own = q1(conn, "SELECT * FROM brands WHERE tenant_id = ? AND is_own = 1", (tenant_id,))
     if own is None:
-        last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ?", (tenant_id,))
+        last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ? AND status = 'ok'", (tenant_id,))
         return {"brand": None, "prompts": 0, "runs": 0, "citations": 0,
                 "visibility": 0.0, "last_run": last["t"] if last else None,
                 "runs_by_engine": []}
     totals = q1(
         conn,
         f"""SELECT COUNT(*) AS runs, COUNT(DISTINCT r.prompt_id) AS prompts
-            FROM runs r WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}""",
+            FROM runs r
+            WHERE r.tenant_id = ? AND r.status = 'ok'
+              AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}""",
         (tenant_id, f"-{days} days", *mp),
     )
     cited = q1(
@@ -47,12 +49,13 @@ def overview(conn, tenant_id: int, days: int = 30, model_id: int | None = None) 
             WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) AND r.status = 'ok' {mf}""",
         (own["id"], tenant_id, f"-{days} days", *mp),
     )
-    last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ?", (tenant_id,))
+    last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ? AND status = 'ok'", (tenant_id,))
     runs_by_engine = q(
         conn,
         f"""SELECT m.name, COUNT(*) AS n
             FROM runs r JOIN models m ON m.id = r.model_id
-            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
+            WHERE r.tenant_id = ? AND r.status = 'ok'
+              AND r.ran_at >= datetime('now', '+8 hours', ?) {mf}
             GROUP BY m.name ORDER BY n DESC""",
         (tenant_id, f"-{days} days", *mp),
     )
@@ -432,7 +435,7 @@ def report_data(conn, tenant_id: int, days: int = 30) -> dict:
         """SELECT COUNT(*) AS n FROM citations c JOIN runs r ON r.id = c.run_id
            WHERE r.tenant_id = ? AND r.ran_at >= datetime('now', '+8 hours', ?)""",
         (tenant_id, window))
-    last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ?", (tenant_id,))
+    last = q1(conn, "SELECT MAX(ran_at) AS t FROM runs WHERE tenant_id = ? AND status = 'ok'", (tenant_id,))
 
     # Per-prompt visibility
     prompts = q(conn,
