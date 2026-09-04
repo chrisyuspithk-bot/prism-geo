@@ -66,6 +66,20 @@ def update_tenant(tenant_id: int, name: str, website: str) -> None:
         _upsert_own_brand(conn, tenant_id, name, website)
 
 
+def key_areas(conn, tenant_id: int) -> list[str]:
+    """The tenant's 3-5 key content areas (newline-separated in the DB)."""
+    row = q1(conn, "SELECT key_areas FROM tenants WHERE id = ?", (tenant_id,))
+    if not row or not row["key_areas"]:
+        return []
+    return [a for a in row["key_areas"].split("\n") if a.strip()]
+
+
+def set_key_areas(tenant_id: int, areas: list[str]) -> None:
+    with connect() as conn:
+        conn.execute("UPDATE tenants SET key_areas = ? WHERE id = ?",
+                     ("\n".join(a.strip() for a in areas if a.strip()), tenant_id))
+
+
 def delete_tenant(tenant_id: int) -> None:
     """Remove a client and everything it owns (runs cascade to mentions/citations)."""
     with connect() as conn:

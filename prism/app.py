@@ -176,17 +176,22 @@ def setup_form(request: Request):
     with connect() as conn:
         own = workspace.own_brand(conn, tenant["id"])
         competitors = workspace.competitors(conn, tenant["id"])
+        areas = workspace.key_areas(conn, tenant["id"])
     return templates.TemplateResponse(
         request, "setup.html",
         context=ctx(request, page="setup", own=own,
-                    competitors=[c["name"] for c in competitors]))
+                    competitors=[c["name"] for c in competitors],
+                    key_areas=areas))
 
 
 @app.post("/setup")
 async def setup_save(request: Request, name: str = Form(...),
-                     website: str = Form(""), competitors: str = Form("")):
+                     website: str = Form(""), competitors: str = Form(""),
+                     key_areas: str = Form("")):
     tenant = _tenant(request)
     workspace.update_tenant(tenant["id"], name.strip(), website.strip())
+    areas = [a.strip() for a in key_areas.replace("\n", ",").split(",") if a.strip()]
+    workspace.set_key_areas(tenant["id"], areas)
     comp_list = [c.strip() for c in competitors.replace("\n", ",").split(",") if c.strip()]
     with connect() as conn:
         existing = {c["name"].lower() for c in workspace.competitors(conn, tenant["id"])}

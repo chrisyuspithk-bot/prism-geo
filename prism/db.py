@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     name TEXT NOT NULL,                  -- the tracked brand (client) display name
     slug TEXT NOT NULL UNIQUE,
     website TEXT NOT NULL DEFAULT '',
+    key_areas TEXT NOT NULL DEFAULT '',  -- newline-separated key content areas (3-5)
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     owner_id INTEGER                     -- auth scaffolding: scope per user when added
 );
@@ -177,6 +178,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE brands ADD COLUMN active INTEGER NOT NULL DEFAULT 1")
     if "brand_id" not in brands_cols:
         conn.execute("ALTER TABLE brands ADD COLUMN brand_id INTEGER REFERENCES brands(id)")
+    tenant_cols = {r["name"] for r in conn.execute("PRAGMA table_info(tenants)")}
+    if "key_areas" not in tenant_cols:
+        conn.execute("ALTER TABLE tenants ADD COLUMN key_areas TEXT NOT NULL DEFAULT ''")
     run_cols = {r["name"] for r in conn.execute("PRAGMA table_info(runs)")}
     if "job_id" not in run_cols:
         conn.execute("ALTER TABLE runs ADD COLUMN job_id INTEGER")

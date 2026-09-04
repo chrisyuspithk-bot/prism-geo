@@ -29,6 +29,11 @@
     <textarea name="competitors" id="setup-competitors" rows="3" placeholder="Nike, Adidas, Allbirds"
            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">{{ competitors | join(', ') }}</textarea>
   </div>
+  <div>
+    <label class="mb-1 block text-sm font-medium">{{ t('setup_key_areas_label') }} <span class="font-normal text-slate-400">({{ t('setup_key_areas_hint') }})</span></label>
+    <textarea name="key_areas" rows="4" placeholder="{{ t('setup_key_areas_placeholder') }}"
+           class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">{{ key_areas | join('\n') }}</textarea>
+  </div>
   <label class="flex items-start gap-3 rounded-lg bg-slate-50 p-4">
     <input type="checkbox" name="generate" value="1" checked class="mt-0.5">
     <span class="text-sm">
