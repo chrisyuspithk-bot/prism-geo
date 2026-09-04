@@ -29,11 +29,16 @@ def active_engine() -> tuple[str, str, str, str]:
 
 
 async def _query_gemini(prompt: str, key: str, base: str, model: str) -> tuple[str, str]:
-    """Query Gemini native API (generateContent)."""
+    """Query Gemini native API (generateContent).
+
+    Uses Google Search grounding so the answer reflects what a user sees in
+    the Gemini app (live web search), not just the model's training knowledge.
+    """
     url = f"{base.rstrip('/')}/models/{model}:generateContent?key={key}"
     body = {
         "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": [{"parts": [{"text": prompt}]}],
+        "tools": [{"google_search": {}}],
     }
     try:
         async with httpx.AsyncClient(timeout=90) as client:
