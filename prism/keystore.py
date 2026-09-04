@@ -25,7 +25,7 @@ PROVIDERS = {
                "Gemini — Google's native API (key in query string, not Bearer header)"),
     "perplexity": ("PERPLEXITY_API_KEY", "https://api.perplexity.ai", "sonar",
                    "Perplexity — Sonar API is OpenAI-compatible (no /v1 prefix)"),
-    "deepseek": ("DEEPSEEK_API_KEY", "https://api.deepseek.com/v1", "deepseek-chat",
+    "deepseek": ("DEEPSEEK_API_KEY", "https://api.deepseek.com/v1", "deepseek-v4-flash",
                  "DeepSeek — cheap OpenAI-compatible chat, good default for trying things out"),
     "custom": ("PRISM_API_KEY", "", "",
                "Custom — any OpenAI-compatible endpoint (set base URL + model)"),
@@ -105,7 +105,7 @@ def active_config() -> tuple[str, str, str, str]:
         e = engines[0]
         return e["name"], e["api_key"], e["base_url"], e["model"]
     return ("deepseek", "", os.environ.get("PRISM_API_BASE", "https://api.deepseek.com"),
-            os.environ.get("PRISM_MODEL", "deepseek-chat"))
+            os.environ.get("PRISM_MODEL", "deepseek-v4-flash"))
 
 
 def add_custom_engine(label: str = "") -> int:
