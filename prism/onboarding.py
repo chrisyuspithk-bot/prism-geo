@@ -432,3 +432,109 @@ async def _ddg_competitor_fallback(query: str, pages: list[dict]) -> list[str]:
 
     return sorted(competitors)[:15]
 
+
+async def discover_key_areas(domain: str, brand_name: str = "",
+                             lang: str = "en") -> dict:
+    """Crawl the website and generate 3-5 key content areas via an LLM.
+
+    Returns {"areas": [str], "error": str | None}. Falls back to headings
+    when no LLM key is configured.
+    """
+    import asyncio
+    from . import crawler
+
+    result = {"areas": [], "error": None}
+
+    urls = await asyncio.to_thread(crawler.discover, domain)
+    pages: list[dict] = []
+    for url in urls[:10]:
+        page = await asyncio.to_thread(crawler.fetch_page, url)
+        if page is not None:
+            pages.append(page)
+
+    if not pages:
+        result["error"] = "Could not fetch any pages from the website"
+        return result
+
+    titles = [p["title"] for p in pages if p["title"]]
+    headings: list[str] = []
+    for p in pages:
+        if p["headings"]:
+            headings.extend(p["headings"].split("\n"))
+    content_samples = [p["content"][:400] for p in pages[:4] if p["content"]]
+
+    page_summary = ""
+    if titles:
+        page_summary += f"Page titles: {'; '.join(titles[:10])}\n"
+    unique_h = list(dict.fromkeys(h.strip() for h in headings if len(h.strip()) > 10))
+    if unique_h:
+        page_summary += f"Key headings: {'; '.join(unique_h[:20])}\n"
+    if content_samples:
+        page_summary += f"Content samples: {' | '.join(content_samples)}"
+
+    engines = keystore.provider_status()
+    engine = next((e for e in engines if e["enabled"] and e["api_key"]), None)
+
+    if engine is None:
+        # Fallback: derive areas from the most substantive headings.
+        areas = [h.strip() for h in headings if len(h.strip()) > 3][:5]
+        result["areas"] = list(dict.fromkeys(areas))
+        if not result["areas"]:
+            result["error"] = "No LLM key configured and no headings found"
+        return result
+
+    key = engine["api_key"]
+    base = engine["base_url"]
+    model = engine["model"]
+    engine_name = engine["name"]
+
+    if lang == "zh-TW":
+        ask = (
+            f"你正在分析品牌網站「{brand_name or domain}」。以下係爬取到嘅頁面摘要：\n\n"
+            f"{page_summary}\n\n"
+            f"請歸納出 3-5 個呢個品牌網站最核心嘅內容/主題領域"
+            f"（即品牌最希望喺 AI 答案引擎中被提及嘅領域）。\n\n"
+            f"只回傳 JSON 字串陣列，例如：[\"企業級資安\", \"零信任架構\", \"合規管理\"]。"
+            f"唔好加任何 markdown 或其他文字。"
+        )
+    else:
+        ask = (
+            f"You are analyzing the brand website '{brand_name or domain}'. "
+            f"Here's a summary of the pages crawled:\n\n{page_summary}\n\n"
+            f"Identify 3-5 key content/topic areas this brand's website focuses on "
+            f"(the areas it most wants to be mentioned for in AI answer engines).\n\n"
+            f'Return ONLY a JSON array of strings, e.g. '
+            f'["Enterprise security", "Zero-trust architecture", "Compliance"]. '
+            f"No markdown."
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            if engine_name == "gemini":
+                url = f"{base.rstrip('/')}/models/{model}:generateContent?key={key}"
+                resp = await client.post(url, json={
+                    "contents": [{"parts": [{"text": ask}]}],
+                })
+                resp.raise_for_status()
+                raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+            else:
+                resp = await client.post(
+                    f"{base.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {key}"},
+                    json={"model": model, "temperature": 0.4,
+                          "messages": [{"role": "user", "content": ask}]},
+                )
+                resp.raise_for_status()
+                raw = resp.json()["choices"][0]["message"]["content"]
+
+        match = re.search(r"\[.*\]", raw, re.S)
+        if match:
+            parsed = json.loads(match.group(0))
+            if isinstance(parsed, list):
+                areas = [str(a).strip() for a in parsed if str(a).strip()]
+                result["areas"] = areas[:5]
+    except Exception as exc:
+        result["error"] = f"LLM key-area generation failed: {str(exc)[:200]}"
+
+    return result
+

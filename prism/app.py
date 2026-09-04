@@ -24,7 +24,7 @@ from fastapi.templating import Jinja2Templates
 from . import audit_report, i18n, jobs, keystore, queries, report, scheduler, workspace
 from . import crawler, chunk, drafts, embeddings, rag
 from .db import connect, init_db, q, q1
-from .onboarding import analyze_website, discover_competitors, generate_prompts
+from .onboarding import analyze_website, discover_competitors, discover_key_areas, generate_prompts
 
 BASE = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE / "templates"))
@@ -227,6 +227,22 @@ async def api_discover_competitors(request: Request):
     domain = parsed.netloc or parsed.path
     lang = _resolve_lang(request)
     result = await discover_competitors(domain, brand_name, lang=lang)
+    return JSONResponse(result)
+
+
+@app.post("/api/setup/discover-key-areas")
+async def api_discover_key_areas(request: Request):
+    """Crawl the brand website and generate 3-5 key content areas via an LLM."""
+    body = await request.json()
+    domain = (body.get("domain") or "").strip()
+    brand_name = (body.get("brand_name") or "").strip()
+    if not domain:
+        return JSONResponse({"error": "domain is required"}, status_code=400)
+    from urllib.parse import urlparse
+    parsed = urlparse(domain if "://" in domain else f"https://{domain}")
+    domain = parsed.netloc or parsed.path
+    lang = _resolve_lang(request)
+    result = await discover_key_areas(domain, brand_name, lang=lang)
     return JSONResponse(result)
 
 
