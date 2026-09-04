@@ -99,9 +99,13 @@ def ctx(request: Request, **kwargs) -> dict:
         models_list = [dict(m) for m in queries.models(conn)]
         has_brand = q1(conn, "SELECT 1 FROM brands WHERE tenant_id = ? AND is_own = 1",
                        (tenant["id"],)) is not None
+        gsite = q1(conn,
+                   "SELECT id FROM sites WHERE tenant_id = ? AND status = 'ready' ORDER BY created_at DESC LIMIT 1",
+                   (tenant["id"],))
     return {"request": request, "models": models_list, "tenant": tenant,
             "PRISM_KEY": keystore.has_any_key(), "lang": lang,
             "languages": i18n.LANGUAGES, "has_brand": has_brand,
+            "generate_site_id": gsite["id"] if gsite else None,
             "t": lambda key, **fmt: i18n.t(lang, key, **fmt), **kwargs}
 
 
@@ -694,7 +698,7 @@ def generate_page(request: Request, site_id: int, page: int = 1):
     paged = all_pages[(page - 1) * per_page : page * per_page]
     return templates.TemplateResponse(
         request, "generate.html",
-        context=ctx(request, page="sites", site=site, pages=paged,
+        context=ctx(request, page="generate", site=site, pages=paged,
                     page_num=page, total_pages=total_pages, total_items=len(all_pages)))
 
 
