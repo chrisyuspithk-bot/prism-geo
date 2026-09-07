@@ -216,6 +216,15 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "ig_image" not in ver_cols:
         conn.execute("ALTER TABLE draft_versions ADD COLUMN ig_image TEXT NOT NULL DEFAULT ''")
 
+    # Backfill images into version snapshots recorded before image support,
+    # taking the draft's current images as the best available approximation.
+    conn.execute("""
+        UPDATE draft_versions
+        SET fb_image = COALESCE((SELECT d.fb_image FROM drafts d WHERE d.id = draft_versions.draft_id), ''),
+            ig_image = COALESCE((SELECT d.ig_image FROM drafts d WHERE d.id = draft_versions.draft_id), '')
+        WHERE fb_image = '' AND ig_image = ''
+    """)
+
     # Multi-tenant: ensure a default tenant exists and every row is scoped.
     # Note: SQLite can't ALTER-in a REFERENCES column with a non-NULL default,
     # so the migrated columns carry no FK (new tables created by SCHEMA do).
