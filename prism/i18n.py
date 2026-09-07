@@ -54,6 +54,8 @@ STRINGS = {
     "fetch_trend_keywords": {"zh-TW": "🔍 獲取趨勢關鍵詞", "en": "🔍 Trending keywords"},
     "add_selected": {"zh-TW": "加入所選 →", "en": "Add selected →"},
     "no_key_areas": {"zh-TW": "尚未設定重點領域。請到「設定 → 品牌」新增。", "en": "No key areas yet. Add them in Settings → Brand."},
+    "hk_trending_label": {"zh-TW": "香港熱門趨勢", "en": "Hong Kong Trending"},
+    "hk_trending_btn": {"zh-TW": "🔍 獲取 Top 5", "en": "🔍 Get Top 5"},
     "geo_optimize": {"zh-TW": "🚀 GEO 優化", "en": "🚀 GEO Optimize"},
     "clean_format": {"zh-TW": "🧹 清除格式", "en": "🧹 Clean"},
     "gen_fb_image": {"zh-TW": "📘 FB 圖片", "en": "📘 FB Image"},
