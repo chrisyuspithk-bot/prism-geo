@@ -1349,6 +1349,7 @@ def create_draft_endpoint(request: Request, site_id: int = Form(...), prompt: st
     tenant = _tenant(request)
     draft_id = drafts.create_draft(tenant["id"], site_id, prompt, format, content,
                                    fb_image=fb_image, ig_image=ig_image)
+    drafts.record_version(tenant["id"], draft_id, prompt, format, content)
     return RedirectResponse(f"/drafts/{draft_id}?lang={_resolve_lang(request)}", 303)
 
 

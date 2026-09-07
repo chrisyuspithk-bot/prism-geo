@@ -325,6 +325,7 @@ STRINGS = {
     "copy": {"zh-TW": "複製", "en": "Copy"},
     "download_image": {"zh-TW": "下載圖片", "en": "Download"},
     "save_history": {"zh-TW": "儲存記錄", "en": "Save history"},
+    "no_save_history": {"zh-TW": "尚無儲存記錄。儲存草稿後，每次內容變更都會留下記錄。", "en": "No save history yet. Each content change is recorded after you save."},
     "restore": {"zh-TW": "還原", "en": "Restore"},
     "crawl_site": {"zh-TW": "爬取網站", "en": "Crawl Site"},
     "title_col": {"zh-TW": "標題", "en": "Title"},
