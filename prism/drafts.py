@@ -33,18 +33,18 @@ def get_draft(tenant_id: int, draft_id: int) -> dict | None:
 
 
 def create_draft(tenant_id: int, site_id: int | None, prompt: str,
-                 fmt: str, content: str) -> int:
+                 fmt: str, content: str, fb_image: str = "", ig_image: str = "") -> int:
     with connect() as conn:
         cur = conn.execute(
-            """INSERT INTO drafts (tenant_id, site_id, prompt, format, content)
-               VALUES (?, ?, ?, ?, ?)""",
-            (tenant_id, site_id, prompt, fmt, content),
+            """INSERT INTO drafts (tenant_id, site_id, prompt, format, content, fb_image, ig_image)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (tenant_id, site_id, prompt, fmt, content, fb_image, ig_image),
         )
         return cur.lastrowid
 
 
 def update_draft(tenant_id: int, draft_id: int, **kwargs) -> bool:
-    allowed = {"content", "status", "format"}
+    allowed = {"content", "status", "format", "fb_image", "ig_image"}
     updates = {k: v for k, v in kwargs.items() if k in allowed and v is not None}
     if not updates:
         return False

@@ -1323,9 +1323,11 @@ async def api_generate(request: Request):
 
 @app.post("/api/drafts")
 def create_draft_endpoint(request: Request, site_id: int = Form(...), prompt: str = Form(...),
-                          format: str = Form("linkedin_post"), content: str = Form(...)):
+                          format: str = Form("linkedin_post"), content: str = Form(...),
+                          fb_image: str = Form(""), ig_image: str = Form("")):
     tenant = _tenant(request)
-    draft_id = drafts.create_draft(tenant["id"], site_id, prompt, format, content)
+    draft_id = drafts.create_draft(tenant["id"], site_id, prompt, format, content,
+                                   fb_image=fb_image, ig_image=ig_image)
     return RedirectResponse(f"/drafts/{draft_id}?lang={_resolve_lang(request)}", 303)
 
 

@@ -190,6 +190,13 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "crawl_progress" not in site_cols:
         conn.execute("ALTER TABLE sites ADD COLUMN crawl_progress TEXT DEFAULT ''")
 
+    # Draft social images (base64 data URLs)
+    draft_cols = {r["name"] for r in conn.execute("PRAGMA table_info(drafts)")}
+    if "fb_image" not in draft_cols:
+        conn.execute("ALTER TABLE drafts ADD COLUMN fb_image TEXT NOT NULL DEFAULT ''")
+    if "ig_image" not in draft_cols:
+        conn.execute("ALTER TABLE drafts ADD COLUMN ig_image TEXT NOT NULL DEFAULT ''")
+
     # Multi-tenant: ensure a default tenant exists and every row is scoped.
     # Note: SQLite can't ALTER-in a REFERENCES column with a non-NULL default,
     # so the migrated columns carry no FK (new tables created by SCHEMA do).
