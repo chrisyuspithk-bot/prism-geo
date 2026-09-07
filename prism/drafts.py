@@ -3,21 +3,27 @@
 from .db import connect, q, q1
 
 
+# Exclude fb_image/ig_image (large base64 data URLs) from list queries.
+_DRAFT_LIST_COLS = ("d.id", "d.tenant_id", "d.site_id", "d.prompt", "d.format",
+                    "d.content", "d.status", "d.created_at", "d.updated_at")
+
+
 def list_drafts(tenant_id: int, status: str | None = None) -> list[dict]:
+    cols = ", ".join(_DRAFT_LIST_COLS)
     with connect() as conn:
         if status and status in ("draft", "published"):
             rows = q(conn,
-                     """SELECT d.*, s.domain FROM drafts d
-                        LEFT JOIN sites s ON s.id = d.site_id
-                        WHERE d.tenant_id = ? AND d.status = ?
-                        ORDER BY d.updated_at DESC""",
+                     f"""SELECT {cols}, s.domain FROM drafts d
+                         LEFT JOIN sites s ON s.id = d.site_id
+                         WHERE d.tenant_id = ? AND d.status = ?
+                         ORDER BY d.updated_at DESC""",
                      (tenant_id, status))
         else:
             rows = q(conn,
-                     """SELECT d.*, s.domain FROM drafts d
-                        LEFT JOIN sites s ON s.id = d.site_id
-                        WHERE d.tenant_id = ?
-                        ORDER BY d.updated_at DESC""",
+                     f"""SELECT {cols}, s.domain FROM drafts d
+                         LEFT JOIN sites s ON s.id = d.site_id
+                         WHERE d.tenant_id = ?
+                         ORDER BY d.updated_at DESC""",
                      (tenant_id,))
         return [dict(r) for r in rows]
 
