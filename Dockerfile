@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir fastapi uvicorn jinja2 httpx python-multipart wea
 COPY prism/ ./prism/
 
 ENV PRISM_DB_PATH=/data/prism.db
+ENV PRISM_IMAGE_DIR=/data/images
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8080

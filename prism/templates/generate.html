@@ -447,7 +447,8 @@ function renderSocialImage(platform, imageDataUrl) {
   cp.className = 'rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50';
   cp.textContent = '{{ t('copy') }}';
   cp.onclick = function() {
-    navigator.clipboard.writeText(imageDataUrl).then(() => {
+    const absUrl = imageDataUrl.startsWith('data:') ? imageDataUrl : new URL(imageDataUrl, location.origin).href;
+    navigator.clipboard.writeText(absUrl).then(() => {
       cp.textContent = '{{ t('copied') }}';
       setTimeout(() => { cp.textContent = '{{ t('copy') }}'; }, 1500);
     });

@@ -6,6 +6,7 @@ evaluation is scoped to the tenant selected in the sidebar. Engine API keys are
 configured once, centrally, by the operator and shared across all tenants.
 """
 
+import base64
 import json
 import os
 import re
@@ -29,6 +30,19 @@ from .onboarding import analyze_website, discover_competitors, discover_key_area
 
 BASE = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE / "templates"))
+
+# Generated social images are written to disk (the Fly volume) rather than
+# stored as base64 in the DB, keeping drafts small and avoiding form-size limits.
+IMAGE_DIR = Path(os.environ.get("PRISM_IMAGE_DIR", str(BASE.parent / "data" / "images")))
+
+
+def _save_image(b64_data: str, mime: str) -> str:
+    """Persist a base64 image to disk and return its public URL path."""
+    ext = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}.get(mime, "jpg")
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    (IMAGE_DIR / filename).write_bytes(base64.b64decode(b64_data))
+    return f"/images/{filename}"
 
 
 def _tz_display(utc_str: str) -> str:
@@ -60,6 +74,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="prism", description="AI visibility tracking (GEO/AEO)", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
+IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/images", StaticFiles(directory=str(IMAGE_DIR)), name="images")
 
 
 # --- Tenant resolution ---------------------------------------------------------
@@ -1023,8 +1039,13 @@ async def api_generate_social_image(request: Request):
     if "error" in result:
         return JSONResponse(result, 500)
 
+    try:
+        image_url = _save_image(result["data"], result["mime"])
+    except Exception:
+        image_url = f"data:{result['mime']};base64,{result['data']}"
+
     return JSONResponse({
-        "image": f"data:{result['mime']};base64,{result['data']}",
+        "image": image_url,
         "platform": platform,
         "model": image_model,
     })
