@@ -71,6 +71,7 @@ Rules:
 - Ground brand facts, features, and claims in the website content.
 - For entities from the user request that aren't in the website content, search the web and include what you find.
 - Do NOT invent features, pricing, testimonials, or statistics.
+- Do NOT include citation markers or source numbers (like [1] or [1, 2]) in your response — write in clean prose.
 - Write in the same language as the user's request.
 
 WEBSITE CONTENT:
@@ -169,6 +170,9 @@ def _clean_markdown(text: str) -> str:
     text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)  # ### headers
     text = re.sub(r"^[-*+]\s+", "", text, flags=re.MULTILINE)   # - bullet
     text = re.sub(r"^\d+\.\s+", "", text, flags=re.MULTILINE)    # 1. numbered
+    text = re.sub(r"\[\s*\d+(?:\s*,\s*\d+)*\s*\]", "", text)    # [1] / [1, 3] citations
+    text = re.sub(r"[ \t]{2,}", " ", text)               # collapse gaps left by stripped citations
+    text = re.sub(r"[ \t]+([：。，、；！？])", r"\1", text)  # no space before CJK punctuation
     text = re.sub(r"`(.+?)`", r"\1", text)               # `code`
     text = re.sub(r"\n{3,}", "\n\n", text)               # collapse excessive newlines
     return text.strip()
