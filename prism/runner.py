@@ -22,6 +22,42 @@ SYSTEM_PROMPT = (
 )
 
 
+async def _web_context(query: str) -> str:
+    """Free DuckDuckGo Instant Answer API — lightweight grounding for engines
+    without native web search (DeepSeek). No key required; returns a short
+    text blob of abstracts/related topics, or "" when nothing useful comes back.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                "https://api.duckduckgo.com/",
+                params={"q": query, "format": "json", "no_html": 1, "skip_disambig": 1},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception:
+        return ""
+
+    lines: list[str] = []
+    if data.get("AbstractText"):
+        lines.append(data["AbstractText"])
+    for topic in data.get("RelatedTopics", []):
+        text = topic.get("Text", "")
+        if text:
+            lines.append(text)
+
+    if not lines:
+        return ""
+
+    seen: set[str] = set()
+    unique: list[str] = []
+    for line in lines:
+        if line not in seen:
+            seen.add(line)
+            unique.append(line)
+    return "\n".join(unique[:6])
+
+
 def active_engine() -> tuple[str, str, str, str]:
     """(provider, api_key, base_url, model) resolved from settings + env."""
     from . import keystore
@@ -64,10 +100,15 @@ async def _query_gemini(prompt: str, key: str, base: str, model: str) -> tuple[s
 async def _query_openai(prompt: str, key: str, base: str, model: str,
                         name: str = "") -> tuple[str, str]:
     """Query any OpenAI-compatible chat/completions endpoint."""
+    system = SYSTEM_PROMPT
+    if name == "deepseek":
+        ctx = await _web_context(prompt)
+        if ctx:
+            system += "\n\nLive web context (ground your answer on this):\n" + ctx
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system},
             {"role": "user", "content": prompt},
         ],
     }
