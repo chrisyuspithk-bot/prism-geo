@@ -1,0 +1,71 @@
+<form id="gen-form" onsubmit="handleGenerate(event)">
+  <div class="mb-4 grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="block text-sm font-semibold mb-2">{{ t('format_label') }}</label>
+      {% set fmt = initial_format | default('linkedin_post') %}
+      <select name="format" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+        <option value="linkedin_post" {{ 'selected' if fmt == 'linkedin_post' }}>{{ t('linkedin_post') }}</option>
+        <option value="email" {{ 'selected' if fmt == 'email' }}>{{ t('email') }}</option>
+        <option value="ad_copy" {{ 'selected' if fmt == 'ad_copy' }}>{{ t('ad_copy') }}</option>
+        <option value="blog_intro" {{ 'selected' if fmt == 'blog_intro' }}>{{ t('blog_intro') }}</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-semibold mb-2">{{ t('provider') }}</label>
+      <select name="provider" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+        <option value="">{{ t('provider_auto') }}</option>
+        {% for e in engines %}
+        <option value="{{ e.name }}">{{ e.name | replace('_', ' ') | title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="mb-4">
+    <div class="flex items-center justify-between mb-2">
+      <label class="text-sm font-semibold">{{ t('setup_key_areas_label') }}</label>
+      {% if key_areas %}
+      <button type="button" id="trend-btn" onclick="fetchTrendKeywords()"
+              class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50">
+        {{ t('fetch_trend_keywords') }}
+      </button>
+      {% endif %}
+    </div>
+    {% if key_areas %}
+    <div id="key-area-chips" class="flex flex-wrap gap-2">
+      {% for a in key_areas %}
+      <button type="button" onclick="appendToPrompt(this.textContent.trim())"
+              class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-colors">{{ a }}</button>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-xs text-slate-400">{{ t('no_key_areas') }}</p>
+    {% endif %}
+    <div id="trend-results" class="mt-3 hidden"></div>
+  </div>
+  <div class="mb-4">
+    <div class="flex items-center justify-between mb-2">
+      <label class="text-sm font-semibold">{{ t('hk_trending_label') }}</label>
+      <button type="button" id="hk-trend-btn" onclick="fetchHkTrending()"
+              class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50">
+        {{ t('hk_trending_btn') }}
+      </button>
+    </div>
+    <div id="hk-trend-chips" class="hidden flex flex-wrap gap-2"></div>
+  </div>
+  <div class="mb-4">
+    <div class="flex items-center justify-between mb-2">
+      <label class="text-sm font-semibold">{{ t('your_prompt') }}</label>
+      <button type="button" id="kw-btn" onclick="generateKeywords()"
+              class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50">
+        {{ t('gen_keywords') if t('gen_keywords') != 'gen_keywords' else '✨ 10 Keywords' }}
+      </button>
+    </div>
+    <textarea name="prompt" id="prompt-input" rows="3" required
+              class="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              placeholder="{{ t('your_prompt') }}">{{ initial_prompt | default('') }}</textarea>
+  </div>
+  <div id="kw-chips" class="mb-4 hidden flex flex-wrap gap-2"></div>
+  <button type="submit" id="gen-btn"
+          class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors">{{ generate_btn_label | default(t('generate_copy')) }}</button>
+  <span id="gen-spinner" class="hidden ml-3 text-sm text-slate-500">{{ t('generating') }}</span>
+</form>

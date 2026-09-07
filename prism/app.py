@@ -1368,19 +1368,31 @@ def draft_view(request: Request, draft_id: int):
     d = drafts.get_draft(tenant["id"], draft_id)
     if not d:
         return RedirectResponse("/drafts", 303)
+    site = None
+    if d.get("site_id"):
+        sites, _ = _site_queries(tenant["id"])
+        site = next((s for s in sites if s["id"] == d["site_id"]), None)
+    engines = [{"name": e["name"]} for e in keystore.active_engines()]
+    with connect() as conn:
+        areas = workspace.key_areas(conn, tenant["id"])
     return templates.TemplateResponse(
-        request, "draft.html", context=ctx(request, page="drafts", draft=d))
+        request, "draft.html",
+        context=ctx(request, page="drafts", draft=d, site=site, engines=engines, key_areas=areas))
 
 
 @app.post("/drafts/{draft_id}")
 def draft_action(request: Request, draft_id: int, action: str = Form("save"),
                  content: str = Form(None), fb_image: str = Form(""),
-                 ig_image: str = Form("")):
+                 ig_image: str = Form(""), format: str = Form(""), prompt: str = Form("")):
     tenant = _tenant(request)
     if action == "save":
         updates = {}
         if content is not None:
             updates["content"] = content
+        if format:
+            updates["format"] = format
+        if prompt:
+            updates["prompt"] = prompt
         if fb_image:
             updates["fb_image"] = fb_image
         if ig_image:

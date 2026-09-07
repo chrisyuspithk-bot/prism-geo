@@ -13,6 +13,14 @@
 </div>
 
 <div class="max-w-3xl">
+{% if site %}
+  <div class="rounded-xl border border-slate-200 bg-white p-6 mb-6">
+    {% set initial_prompt = draft.prompt %}
+    {% set initial_format = draft.format %}
+    {% set generate_btn_label = t('regenerate') %}
+    {% include '_generate_form.html' %}
+  </div>
+{% endif %}
 <div class="flex gap-3 mb-6 flex-wrap items-center">
   <button onclick="copyDraft()"
           class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50">{{ t('copy') }}</button>
@@ -32,6 +40,8 @@
 <div class="rounded-xl border border-slate-200 bg-white p-6">
   <form method="post" action="/drafts/{{ draft.id }}">
     <input type="hidden" name="action" value="save">
+    <input type="hidden" name="prompt" id="draft-prompt-field" value="{{ draft.prompt }}">
+    <input type="hidden" name="format" id="draft-format-field" value="{{ draft.format }}">
     <input type="hidden" name="fb_image" id="draft-fb-image">
     <input type="hidden" name="ig_image" id="draft-ig-image">
     <textarea name="content" id="draft-content-ta" rows="20"
@@ -64,6 +74,47 @@
 </div>
 
 <script>
+{% include '_generate_helpers.js' %}
+
+{% if site %}
+async function handleGenerate(e) {
+  e.preventDefault();
+  const btn = document.getElementById('gen-btn');
+  const spinner = document.getElementById('gen-spinner');
+  const ta = document.getElementById('draft-content-ta');
+  const form = e.target;
+
+  btn.disabled = true;
+  spinner.classList.remove('hidden');
+
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        site_id: {{ site.id }},
+        prompt: form.prompt.value,
+        format: form.format.value,
+        provider: form.provider.value
+      })
+    });
+    const data = await resp.json();
+    if (data.content) {
+      ta.value = data.content;
+      document.getElementById('draft-prompt-field').value = form.prompt.value;
+      document.getElementById('draft-format-field').value = form.format.value;
+    } else {
+      alert(data.error || 'No response');
+    }
+  } catch(err) {
+    alert('Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    spinner.classList.add('hidden');
+  }
+}
+{% endif %}
+
 function copyDraft() {
   const text = document.getElementById('draft-content-ta').value;
   navigator.clipboard.writeText(text).then(() => {

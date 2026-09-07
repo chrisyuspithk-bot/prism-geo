@@ -297,6 +297,7 @@ STRINGS = {
     "last_crawled": {"zh-TW": "上次爬取", "en": "Last crawled"},
     "no_sites": {"zh-TW": "尚未新增任何網站。輸入網域開始爬取。", "en": "No sites yet. Enter a domain to start crawling."},
     "generate_copy": {"zh-TW": "生成文案", "en": "Generate Copy"},
+    "regenerate": {"zh-TW": "重新生成", "en": "Regenerate"},
     "generate_title": {"zh-TW": "從網站內容生成行銷文案", "en": "Generate marketing copy from website content"},
     "generate_desc": {"zh-TW": "輸入你的需求，系統會根據網站內容生成文案。", "en": "Describe what you need — the system will generate copy grounded in the website content."},
     "format_label": {"zh-TW": "格式", "en": "Format"},

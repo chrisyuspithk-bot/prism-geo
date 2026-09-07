@@ -50,19 +50,17 @@ def create_draft(tenant_id: int, site_id: int | None, prompt: str,
 
 
 def update_draft(tenant_id: int, draft_id: int, **kwargs) -> bool:
-    allowed = {"content", "status", "format", "fb_image", "ig_image"}
+    allowed = {"content", "status", "format", "fb_image", "ig_image", "prompt"}
     updates = {k: v for k, v in kwargs.items() if k in allowed and v is not None}
     if not updates:
         return False
-    updates["updated_at"] = None  # will be set by SQL
-    set_clause = ", ".join(
-        f"{k} = " + (f"'{v}'" if k != "updated_at" else "datetime('now')")
-        for k, v in updates.items()
-    )
+    sets = [f"{k} = ?" for k in updates]
+    sets.append("updated_at = datetime('now')")
+    values = list(updates.values()) + [draft_id, tenant_id]
     with connect() as conn:
         conn.execute(
-            f"UPDATE drafts SET {set_clause} WHERE id = ? AND tenant_id = ?",
-            (draft_id, tenant_id),
+            f"UPDATE drafts SET {', '.join(sets)} WHERE id = ? AND tenant_id = ?",
+            tuple(values),
         )
         return True
 
