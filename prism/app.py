@@ -724,9 +724,11 @@ def generate_page(request: Request, site_id: int):
     if not site or site["status"] != "ready":
         return RedirectResponse(f"/sites/{site_id}", 303)
     engines = [{"name": e["name"]} for e in keystore.active_engines()]
+    with connect() as conn:
+        areas = workspace.key_areas(conn, tenant["id"])
     return templates.TemplateResponse(
         request, "generate.html",
-        context=ctx(request, page="generate", site=site, engines=engines))
+        context=ctx(request, page="generate", site=site, engines=engines, key_areas=areas))
 
 
 @app.post("/api/strip-markdown")
@@ -1038,6 +1040,7 @@ async def api_generate_keywords(request: Request):
     except Exception:
         body = {}
     site_id = int(body.get("site_id", 0))
+    key_areas = [str(a).strip() for a in (body.get("key_areas") or []) if str(a).strip()]
     lang = _resolve_lang(request)
 
     # Read up to 10 representative pages (prefer pages with titles and content)
@@ -1076,21 +1079,37 @@ async def api_generate_keywords(request: Request):
 
     summary = "\n".join(f"- {p}" for p in parts[:10])
 
+    if key_areas:
+        areas_block = "\n".join(f"- {a}" for a in key_areas)
+    else:
+        areas_block = ""
+
     if lang == "zh-TW":
+        focus = (
+            f"以下係呢間公司嘅重點領域（品牌想佔據嘅核心主題）：\n{areas_block}\n\n"
+            if areas_block else ""
+        )
         ask = (
             f"以下係一個網站嘅內容摘要（{len(pages)} 個頁面）：\n\n"
             f"{summary}\n\n"
-            f"請根據以上網站內容，生成 10 個最相關嘅 SEO/GEO 關鍵字詞組。"
+            f"{focus}"
+            f"請根據以上網站內容{'同重點領域' if areas_block else ''}，生成 10 個最相關嘅 SEO/GEO 關鍵字詞組。"
             f"呢啲關鍵字應該反映網站嘅核心業務、產品、服務同目標受眾會搜尋嘅詞語。"
             f"每個關鍵字應該係 2-5 個詞嘅詞組。\n\n"
             f"只回傳一個 JSON 字串陣列，唔好加任何 markdown 或其他文字：\n"
             f'["關鍵字1", "關鍵字2", ...]'
         )
     else:
+        focus = (
+            f"The company's key focus areas (core topics the brand wants to own):\n{areas_block}\n\n"
+            if areas_block else ""
+        )
         ask = (
             f"Here's a content summary of a website ({len(pages)} pages):\n\n"
             f"{summary}\n\n"
-            f"Based on the website content above, generate 10 most relevant "
+            f"{focus}"
+            f"Based on the website content above"
+            f"{' and the key focus areas' if areas_block else ''}, generate 10 most relevant "
             f"SEO/GEO keyword phrases. These should reflect the site's core "
             f"business, products, services, and what the target audience would "
             f"search for. Each keyword should be a 2-5 word phrase.\n\n"

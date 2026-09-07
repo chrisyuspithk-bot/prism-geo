@@ -32,6 +32,28 @@
       </div>
       <div class="mb-4">
         <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-semibold">{{ t('setup_key_areas_label') }}</label>
+          {% if key_areas %}
+          <button type="button" id="area-kw-btn" onclick="generateAreaKeywords()"
+                  class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50">
+            {{ t('gen_keywords_from_areas') }}
+          </button>
+          {% endif %}
+        </div>
+        {% if key_areas %}
+        <div id="key-area-chips" class="flex flex-wrap gap-2">
+          {% for a in key_areas %}
+          <button type="button" onclick="appendToPrompt(this.textContent.trim())"
+                  class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-colors">{{ a }}</button>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-xs text-slate-400">{{ t('no_key_areas') }}</p>
+        {% endif %}
+        <div id="area-kw-chips" class="mt-2 hidden flex flex-wrap gap-2"></div>
+      </div>
+      <div class="mb-4">
+        <div class="flex items-center justify-between mb-2">
           <label class="text-sm font-semibold">{{ t('your_prompt') }}</label>
           <button type="button" id="kw-btn" onclick="generateKeywords()"
                   class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50">
@@ -81,6 +103,12 @@
 </div>
 
 <script>
+function appendToPrompt(text) {
+  const ta = document.getElementById('prompt-input');
+  ta.value = ta.value ? ta.value + ', ' + text : text;
+  ta.focus();
+}
+
 async function generateKeywords() {
   const btn = document.getElementById('kw-btn');
   const chips = document.getElementById('kw-chips');
@@ -107,11 +135,7 @@ async function generateKeywords() {
       chip.type = 'button';
       chip.className = 'rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors';
       chip.textContent = kw;
-      chip.onclick = function() {
-        const ta = document.getElementById('prompt-input');
-        ta.value = ta.value ? ta.value + ', ' + kw : kw;
-        ta.focus();
-      };
+      chip.onclick = function() { appendToPrompt(kw); };
       chips.appendChild(chip);
     });
     chips.classList.remove('hidden');
@@ -121,6 +145,50 @@ async function generateKeywords() {
   } finally {
     btn.disabled = false;
     btn.textContent = '✨ 10 Keywords';
+  }
+}
+
+async function generateAreaKeywords() {
+  const btn = document.getElementById('area-kw-btn');
+  const chipsBox = document.getElementById('area-kw-chips');
+  const areas = Array.from(document.querySelectorAll('#key-area-chips button'))
+                      .map(b => b.textContent.trim());
+  if (!areas.length) return;
+
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  try {
+    const resp = await fetch('/api/generate-keywords', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({site_id: {{ site.id }}, key_areas: areas})
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      chipsBox.innerHTML = '<span class="text-xs text-red-500">' + data.error + '</span>';
+      chipsBox.classList.remove('hidden');
+      return;
+    }
+
+    chipsBox.innerHTML = '';
+    (data.keywords || []).forEach(kw => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-colors';
+      chip.textContent = kw;
+      chip.onclick = function() { appendToPrompt(kw); };
+      chipsBox.appendChild(chip);
+    });
+    chipsBox.classList.remove('hidden');
+  } catch(err) {
+    chipsBox.innerHTML = '<span class="text-xs text-red-500">Error: ' + err.message + '</span>';
+    chipsBox.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
   }
 }
 
