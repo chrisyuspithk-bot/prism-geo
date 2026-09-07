@@ -717,21 +717,16 @@ def page_detail(request: Request, site_id: int, page_id: int):
 
 
 @app.get("/sites/{site_id}/generate", response_class=HTMLResponse)
-def generate_page(request: Request, site_id: int, page: int = 1):
+def generate_page(request: Request, site_id: int):
     tenant = _tenant(request)
-    sites, pages_by_site = _site_queries(tenant["id"])
+    sites, _ = _site_queries(tenant["id"])
     site = next((s for s in sites if s["id"] == site_id), None)
     if not site or site["status"] != "ready":
         return RedirectResponse(f"/sites/{site_id}", 303)
-    all_pages = pages_by_site.get(site_id, [])
-    per_page = 30
-    total_pages = max(1, (len(all_pages) + per_page - 1) // per_page)
-    page = max(1, min(page, total_pages))
-    paged = all_pages[(page - 1) * per_page : page * per_page]
+    engines = [{"name": e["name"]} for e in keystore.active_engines()]
     return templates.TemplateResponse(
         request, "generate.html",
-        context=ctx(request, page="generate", site=site, pages=paged,
-                    page_num=page, total_pages=total_pages, total_items=len(all_pages)))
+        context=ctx(request, page="generate", site=site, engines=engines))
 
 
 @app.post("/api/strip-markdown")
@@ -1167,6 +1162,7 @@ async def api_generate(request: Request):
     site_id = int(body.get("site_id", 0))
     prompt = str(body.get("prompt", ""))
     fmt = str(body.get("format", "linkedin_post"))
+    provider = str(body.get("provider", ""))
 
     with connect() as conn:
         site = q1(conn, "SELECT * FROM sites WHERE id = ? AND tenant_id = ?", (site_id, tenant["id"]))
@@ -1179,7 +1175,7 @@ async def api_generate(request: Request):
 
     try:
         system_prompt = rag.build_prompt(chunks_list, prompt, fmt)
-        content = rag.generate_with_llm(system_prompt)
+        content = rag.generate_with_llm(system_prompt, provider)
     except Exception as e:
         return JSONResponse({"error": f"Generation failed: {e}"}, 500)
 

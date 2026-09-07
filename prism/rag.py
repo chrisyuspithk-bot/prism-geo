@@ -77,10 +77,13 @@ USER REQUEST: {query}
 YOUR RESPONSE:"""
 
 
-def generate_with_llm(prompt: str) -> str:
-    """Generate copy with Gemini + Google Search grounding.
+def generate_with_llm(prompt: str, provider: str = "") -> str:
+    """Generate copy with a chosen provider.
 
-    Falls back to the first available engine when Gemini isn't configured.
+    `provider` is an engine name ('gemini', 'deepseek', 'perplexity', 'custom',
+    ...). Empty selects Gemini (Google Search grounded) when available, else the
+    first enabled engine. Gemini uses its native API with `google_search`;
+    every other engine goes through an OpenAI-compatible `/chat/completions`.
     """
     from .keystore import active_engines
 
@@ -88,12 +91,21 @@ def generate_with_llm(prompt: str) -> str:
     if not engines:
         return "[Error: No LLM engine configured. Set an API key in Settings → Engine Keys.]"
 
-    # Prefer Gemini with live Google Search grounding.
-    gemini = next((e for e in engines if e["name"] == "gemini" and e.get("api_key")), None)
-    if gemini:
-        key = gemini["api_key"]
-        base = gemini.get("base_url") or "https://generativelanguage.googleapis.com/v1beta"
-        model = gemini.get("model") or "gemini-2.5-flash"
+    if provider:
+        engine_info = next((e for e in engines if e["name"] == provider), None)
+        if not engine_info:
+            return f"[Error: Provider '{provider}' isn't enabled or has no API key.]"
+    else:
+        engine_info = next((e for e in engines if e["name"] == "gemini"), None) or engines[0]
+
+    name = engine_info["name"]
+    key = engine_info["api_key"]
+    if not key or not key.strip():
+        return f"[Error: {name} API key is empty. Set a valid key in Settings → Engine Keys.]"
+
+    if name == "gemini":
+        base = engine_info.get("base_url") or "https://generativelanguage.googleapis.com/v1beta"
+        model = engine_info.get("model") or "gemini-2.5-flash"
         try:
             resp = httpx.post(
                 f"{base.rstrip('/')}/models/{model}:generateContent?key={key}",
@@ -119,26 +131,27 @@ def generate_with_llm(prompt: str) -> str:
         except Exception as e:
             return f"[Error: {e}]"
 
-    engine_info = engines[0]
-    key = engine_info["api_key"]
-    if not key or not key.strip():
-        return "[Error: API key is empty. Set a valid key in Settings → Engine Keys.]"
+    # OpenAI-compatible engines (Perplexity, DeepSeek, Custom, ChatGPT, Claude, ...)
     base = engine_info.get("base_url") or "https://api.deepseek.com/v1"
     model = engine_info.get("model") or "deepseek-v4-flash"
-
+    payload = {"model": model, "messages": [{"role": "user", "content": prompt}],
+               "max_tokens": 1024}
+    if name != "perplexity":
+        payload["temperature"] = 0.7
     try:
         resp = httpx.post(
-            f"{base}/chat/completions",
+            f"{base.rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-            json={"model": model, "messages": [{"role": "user", "content": prompt}],
-                  "temperature": 0.7, "max_tokens": 1024},
+            json=payload,
             timeout=60,
         )
         data = resp.json()
         if "choices" in data:
-            text = data["choices"][0]["message"]["content"]
-            return _clean_markdown(text)
-        return f"[Error: {data.get('error', {}).get('message', str(data))}]"
+            return _clean_markdown(data["choices"][0]["message"]["content"])
+        err = data.get("error", {})
+        if isinstance(err, dict):
+            err = err.get("message", str(data))
+        return f"[Error: {err}]"
     except Exception as e:
         return f"[Error generating copy: {e}]"
 

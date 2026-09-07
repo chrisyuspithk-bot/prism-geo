@@ -295,6 +295,8 @@ STRINGS = {
     "generate_title": {"zh-TW": "從網站內容生成行銷文案", "en": "Generate marketing copy from website content"},
     "generate_desc": {"zh-TW": "輸入你的需求，系統會根據網站內容生成文案。", "en": "Describe what you need — the system will generate copy grounded in the website content."},
     "format_label": {"zh-TW": "格式", "en": "Format"},
+    "provider": {"zh-TW": "提供者", "en": "Provider"},
+    "provider_auto": {"zh-TW": "自動（Gemini + 搜尋）", "en": "Auto (Gemini + Search)"},
     "linkedin_post": {"zh-TW": "LinkedIn 貼文", "en": "LinkedIn Post"},
     "email": {"zh-TW": "電郵", "en": "Email"},
     "ad_copy": {"zh-TW": "廣告文案", "en": "Ad Copy"},

@@ -10,14 +10,25 @@
 <div class="max-w-3xl">
   <div class="rounded-xl border border-slate-200 bg-white p-6">
     <form id="gen-form" onsubmit="generateCopy(event)">
-      <div class="mb-4">
-        <label class="block text-sm font-semibold mb-2">{{ t('format_label') }}</label>
-        <select name="format" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
-          <option value="linkedin_post">{{ t('linkedin_post') }}</option>
-          <option value="email">{{ t('email') }}</option>
-          <option value="ad_copy">{{ t('ad_copy') }}</option>
-          <option value="blog_intro">{{ t('blog_intro') }}</option>
-        </select>
+      <div class="mb-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-sm font-semibold mb-2">{{ t('format_label') }}</label>
+          <select name="format" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+            <option value="linkedin_post">{{ t('linkedin_post') }}</option>
+            <option value="email">{{ t('email') }}</option>
+            <option value="ad_copy">{{ t('ad_copy') }}</option>
+            <option value="blog_intro">{{ t('blog_intro') }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">{{ t('provider') }}</label>
+          <select name="provider" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none">
+            <option value="">{{ t('provider_auto') }}</option>
+            {% for e in engines %}
+            <option value="{{ e.name }}">{{ e.name | replace('_', ' ') | title }}</option>
+            {% endfor %}
+          </select>
+        </div>
       </div>
       <div class="mb-4">
         <div class="flex items-center justify-between mb-2">
@@ -136,7 +147,8 @@ async function generateCopy(e) {
       body: JSON.stringify({
         site_id: {{ site.id }},
         prompt: form.prompt.value,
-        format: form.format.value
+        format: form.format.value,
+        provider: form.provider.value
       })
     });
     const data = await resp.json();
