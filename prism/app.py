@@ -1040,7 +1040,6 @@ async def api_generate_keywords(request: Request):
     except Exception:
         body = {}
     site_id = int(body.get("site_id", 0))
-    key_areas = [str(a).strip() for a in (body.get("key_areas") or []) if str(a).strip()]
     lang = _resolve_lang(request)
 
     # Read up to 10 representative pages (prefer pages with titles and content)
@@ -1079,37 +1078,21 @@ async def api_generate_keywords(request: Request):
 
     summary = "\n".join(f"- {p}" for p in parts[:10])
 
-    if key_areas:
-        areas_block = "\n".join(f"- {a}" for a in key_areas)
-    else:
-        areas_block = ""
-
     if lang == "zh-TW":
-        focus = (
-            f"以下係呢間公司嘅重點領域（品牌想佔據嘅核心主題）：\n{areas_block}\n\n"
-            if areas_block else ""
-        )
         ask = (
             f"以下係一個網站嘅內容摘要（{len(pages)} 個頁面）：\n\n"
             f"{summary}\n\n"
-            f"{focus}"
-            f"請根據以上網站內容{'同重點領域' if areas_block else ''}，生成 10 個最相關嘅 SEO/GEO 關鍵字詞組。"
+            f"請根據以上網站內容，生成 10 個最相關嘅 SEO/GEO 關鍵字詞組。"
             f"呢啲關鍵字應該反映網站嘅核心業務、產品、服務同目標受眾會搜尋嘅詞語。"
             f"每個關鍵字應該係 2-5 個詞嘅詞組。\n\n"
             f"只回傳一個 JSON 字串陣列，唔好加任何 markdown 或其他文字：\n"
             f'["關鍵字1", "關鍵字2", ...]'
         )
     else:
-        focus = (
-            f"The company's key focus areas (core topics the brand wants to own):\n{areas_block}\n\n"
-            if areas_block else ""
-        )
         ask = (
             f"Here's a content summary of a website ({len(pages)} pages):\n\n"
             f"{summary}\n\n"
-            f"{focus}"
-            f"Based on the website content above"
-            f"{' and the key focus areas' if areas_block else ''}, generate 10 most relevant "
+            f"Based on the website content above, generate 10 most relevant "
             f"SEO/GEO keyword phrases. These should reflect the site's core "
             f"business, products, services, and what the target audience would "
             f"search for. Each keyword should be a 2-5 word phrase.\n\n"
@@ -1169,6 +1152,99 @@ async def api_generate_keywords(request: Request):
         pass
 
     return JSONResponse({"error": "Failed to parse keywords"}, 500)
+
+
+@app.post("/api/key-area-keywords")
+async def api_key_area_keywords(request: Request):
+    """Fetch recent/trending keywords per key focus area via web search."""
+    import asyncio
+    tenant = _tenant(request)
+    lang = _resolve_lang(request)
+
+    with connect() as conn:
+        areas = workspace.key_areas(conn, tenant["id"])
+    if not areas:
+        return JSONResponse({"error": "No key areas configured"}, 400)
+
+    areas_block = "\n".join(f"- {a}" for a in areas)
+
+    if lang == "zh-TW":
+        ask = (
+            f"以下係呢間公司嘅重點領域：\n{areas_block}\n\n"
+            f"請針對每個重點領域，搜尋網上近期嘅趨勢、新聞同熱門搜尋詞，"
+            f"為每個領域提供 5-8 個「近期熱門關鍵字詞組」（要反映現時市場趨勢，而唔係一般描述）。\n\n"
+            f"只回傳一個 JSON 物件，key 係重點領域，value 係字串陣列：\n"
+            f'{{"領域1": ["關鍵字1", "關鍵字2"], "領域2": [...]}}'
+        )
+    else:
+        ask = (
+            f"Here are the company's key focus areas:\n{areas_block}\n\n"
+            f"For each focus area, search the web for recent trends, news, and "
+            f"popular search terms, then return 5-8 recent trending keyword phrases "
+            f"per area (reflecting current market trends, not generic descriptions).\n\n"
+            f"Return ONLY a JSON object mapping each focus area to its array of keywords:\n"
+            f'{{"area 1": ["kw 1", "kw 2"], "area 2": [...]}}'
+        )
+
+    from .keystore import active_engines
+    engines = active_engines()
+    if not engines:
+        return JSONResponse({"error": "No LLM engine configured"}, 400)
+
+    # Prefer Gemini — live Google Search is required for real trend data.
+    engine = next((e for e in engines if e["name"] == "gemini"), None) or engines[0]
+    key = engine["api_key"]
+    base = engine["base_url"]
+    model = engine["model"]
+    engine_name = engine["name"]
+
+    def _call_llm():
+        try:
+            if engine_name == "gemini":
+                body = {"contents": [{"parts": [{"text": ask}]}],
+                        "tools": [{"google_search": {}}]}
+                resp = httpx.post(
+                    f"{base}/models/{model}:generateContent?key={key}",
+                    json=body, timeout=120,
+                )
+                resp.raise_for_status()
+                return gemini_answer_text(resp.json())
+            else:
+                resp = httpx.post(
+                    f"{base}/chat/completions",
+                    headers={"Authorization": f"Bearer {key}"},
+                    json={"model": model, "temperature": 0.6, "max_tokens": 2048,
+                          "messages": [{"role": "user", "content": ask}]},
+                    timeout=120,
+                )
+                resp.raise_for_status()
+                return resp.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            return f"__ERROR__:{e}"
+
+    raw = await asyncio.to_thread(_call_llm)
+    if raw.startswith("__ERROR__:"):
+        return JSONResponse({"error": raw[9:]}, 500)
+
+    match = re.search(r"\{.*\}", raw, re.S)
+    if not match:
+        return JSONResponse({"error": "LLM did not return valid keywords"}, 500)
+    try:
+        data = json.loads(match.group(0))
+    except Exception:
+        return JSONResponse({"error": "Failed to parse keywords"}, 500)
+
+    result = []
+    if isinstance(data, dict):
+        for area_name, kws in data.items():
+            if isinstance(kws, list):
+                cleaned = [str(k).strip() for k in kws if str(k).strip()]
+                if cleaned:
+                    result.append({"area": str(area_name), "keywords": cleaned})
+
+    if not result:
+        return JSONResponse({"error": "No keywords returned"}, 500)
+    return JSONResponse({"areas": result})
 
 
 @app.post("/api/generate")

@@ -34,9 +34,9 @@
         <div class="flex items-center justify-between mb-2">
           <label class="text-sm font-semibold">{{ t('setup_key_areas_label') }}</label>
           {% if key_areas %}
-          <button type="button" id="area-kw-btn" onclick="generateAreaKeywords()"
+          <button type="button" id="trend-btn" onclick="fetchTrendKeywords()"
                   class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50">
-            {{ t('gen_keywords_from_areas') }}
+            {{ t('fetch_trend_keywords') }}
           </button>
           {% endif %}
         </div>
@@ -50,7 +50,7 @@
         {% else %}
         <p class="text-xs text-slate-400">{{ t('no_key_areas') }}</p>
         {% endif %}
-        <div id="area-kw-chips" class="mt-2 hidden flex flex-wrap gap-2"></div>
+        <div id="trend-results" class="mt-3 hidden"></div>
       </div>
       <div class="mb-4">
         <div class="flex items-center justify-between mb-2">
@@ -148,48 +148,87 @@ async function generateKeywords() {
   }
 }
 
-async function generateAreaKeywords() {
-  const btn = document.getElementById('area-kw-btn');
-  const chipsBox = document.getElementById('area-kw-chips');
-  const areas = Array.from(document.querySelectorAll('#key-area-chips button'))
-                      .map(b => b.textContent.trim());
-  if (!areas.length) return;
+let selectedTrendKeywords = new Set();
 
+async function fetchTrendKeywords() {
+  const btn = document.getElementById('trend-btn');
+  const results = document.getElementById('trend-results');
   const original = btn.textContent;
   btn.disabled = true;
-  btn.textContent = 'Generating…';
+  btn.textContent = '搜尋趨勢中…';
 
   try {
-    const resp = await fetch('/api/generate-keywords', {
+    const resp = await fetch('/api/key-area-keywords', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({site_id: {{ site.id }}, key_areas: areas})
+      body: JSON.stringify({})
     });
     const data = await resp.json();
 
     if (data.error) {
-      chipsBox.innerHTML = '<span class="text-xs text-red-500">' + data.error + '</span>';
-      chipsBox.classList.remove('hidden');
+      results.innerHTML = '<span class="text-xs text-red-500">' + data.error + '</span>';
+      results.classList.remove('hidden');
       return;
     }
 
-    chipsBox.innerHTML = '';
-    (data.keywords || []).forEach(kw => {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-colors';
-      chip.textContent = kw;
-      chip.onclick = function() { appendToPrompt(kw); };
-      chipsBox.appendChild(chip);
+    selectedTrendKeywords.clear();
+    results.innerHTML = '';
+
+    (data.areas || []).forEach(area => {
+      const group = document.createElement('div');
+      group.className = 'mb-3';
+      const label = document.createElement('div');
+      label.className = 'text-xs font-semibold text-slate-500 mb-1';
+      label.textContent = area.area;
+      group.appendChild(label);
+
+      const wrap = document.createElement('div');
+      wrap.className = 'flex flex-wrap gap-2';
+      (area.keywords || []).forEach(kw => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'trend-chip rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-indigo-300 transition-colors';
+        chip.textContent = kw;
+        chip.onclick = function() { toggleTrendKeyword(chip, kw); };
+        wrap.appendChild(chip);
+      });
+      group.appendChild(wrap);
+      results.appendChild(group);
     });
-    chipsBox.classList.remove('hidden');
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'mt-1 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors';
+    addBtn.textContent = '{{ t('add_selected') }}';
+    addBtn.onclick = addSelectedToPrompt;
+    results.appendChild(addBtn);
+
+    results.classList.remove('hidden');
   } catch(err) {
-    chipsBox.innerHTML = '<span class="text-xs text-red-500">Error: ' + err.message + '</span>';
-    chipsBox.classList.remove('hidden');
+    results.innerHTML = '<span class="text-xs text-red-500">Error: ' + err.message + '</span>';
+    results.classList.remove('hidden');
   } finally {
     btn.disabled = false;
     btn.textContent = original;
   }
+}
+
+function toggleTrendKeyword(chip, kw) {
+  if (selectedTrendKeywords.has(kw)) {
+    selectedTrendKeywords.delete(kw);
+    chip.className = 'trend-chip rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-indigo-300 transition-colors';
+  } else {
+    selectedTrendKeywords.add(kw);
+    chip.className = 'trend-chip rounded-full border border-indigo-300 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 transition-colors';
+  }
+}
+
+function addSelectedToPrompt() {
+  const kws = Array.from(selectedTrendKeywords);
+  if (!kws.length) return;
+  const ta = document.getElementById('prompt-input');
+  ta.value = ta.value ? ta.value + ', ' + kws.join(', ') : kws.join(', ');
+  ta.focus();
 }
 
 async function generateCopy(e) {
