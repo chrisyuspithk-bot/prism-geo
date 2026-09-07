@@ -72,13 +72,15 @@ def delete_draft(tenant_id: int, draft_id: int) -> bool:
         return True
 
 
-def record_version(tenant_id: int, draft_id: int, prompt: str, fmt: str, content: str) -> int:
+def record_version(tenant_id: int, draft_id: int, prompt: str, fmt: str, content: str,
+                   fb_image: str = "", ig_image: str = "") -> int:
     """Snapshot a draft save so it can be looked back on later."""
     with connect() as conn:
         cur = conn.execute(
-            """INSERT INTO draft_versions (draft_id, tenant_id, prompt, format, content)
-               VALUES (?, ?, ?, ?, ?)""",
-            (draft_id, tenant_id, prompt or "", fmt or "linkedin_post", content or ""),
+            """INSERT INTO draft_versions (draft_id, tenant_id, prompt, format, content, fb_image, ig_image)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (draft_id, tenant_id, prompt or "", fmt or "linkedin_post", content or "",
+             fb_image or "", ig_image or ""),
         )
         return cur.lastrowid
 
@@ -86,7 +88,7 @@ def record_version(tenant_id: int, draft_id: int, prompt: str, fmt: str, content
 def list_versions(tenant_id: int, draft_id: int) -> list[dict]:
     with connect() as conn:
         rows = q(conn,
-                 """SELECT id, prompt, format, content, created_at
+                 """SELECT id, prompt, format, content, fb_image, ig_image, created_at
                     FROM draft_versions
                     WHERE draft_id = ? AND tenant_id = ?
                     ORDER BY id DESC""",

@@ -97,7 +97,7 @@
   </aside>
 </div>
 
-<div id="version-tooltip" class="pointer-events-none fixed z-50 hidden max-w-md rounded-lg bg-slate-900 px-3 py-2 text-xs leading-relaxed text-white shadow-xl whitespace-pre-wrap max-h-80 overflow-y-auto"></div>
+<div id="version-tooltip" class="pointer-events-none fixed z-50 hidden max-w-md rounded-lg bg-slate-900 px-3 py-2 text-xs leading-relaxed text-white shadow-xl max-h-80 overflow-y-auto"></div>
 
 <script>
 {% include '_generate_helpers.js' %}
@@ -118,7 +118,18 @@ const versionTip = document.getElementById('version-tooltip');
 function showVersionTip(ev, id) {
   const v = DRAFT_VERSIONS.find(x => x.id === id);
   if (!v) return;
-  versionTip.textContent = v.content || v.prompt || '';
+  versionTip.innerHTML = '';
+  const txt = document.createElement('div');
+  txt.className = 'whitespace-pre-wrap';
+  txt.textContent = v.content || v.prompt || '';
+  versionTip.appendChild(txt);
+  if (v.fb_image || v.ig_image) {
+    const imgs = document.createElement('div');
+    imgs.className = 'mt-2 flex gap-2';
+    if (v.fb_image) imgs.appendChild(versionImage(v.fb_image, 'Facebook'));
+    if (v.ig_image) imgs.appendChild(versionImage(v.ig_image, 'Instagram'));
+    versionTip.appendChild(imgs);
+  }
   versionTip.classList.remove('hidden');
   const r = ev.currentTarget.getBoundingClientRect();
   const tw = versionTip.offsetWidth;
@@ -129,6 +140,14 @@ function showVersionTip(ev, id) {
   if (top + th > window.innerHeight - 8) top = Math.max(8, window.innerHeight - th - 8);
   versionTip.style.left = left + 'px';
   versionTip.style.top = top + 'px';
+}
+
+function versionImage(src, label) {
+  const img = document.createElement('img');
+  img.src = src;
+  img.className = 'w-24 rounded border border-slate-700';
+  img.alt = label;
+  return img;
 }
 
 function hideVersionTip() {

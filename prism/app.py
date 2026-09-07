@@ -1349,7 +1349,8 @@ def create_draft_endpoint(request: Request, site_id: int = Form(...), prompt: st
     tenant = _tenant(request)
     draft_id = drafts.create_draft(tenant["id"], site_id, prompt, format, content,
                                    fb_image=fb_image, ig_image=ig_image)
-    drafts.record_version(tenant["id"], draft_id, prompt, format, content)
+    drafts.record_version(tenant["id"], draft_id, prompt, format, content,
+                          fb_image=fb_image, ig_image=ig_image)
     return RedirectResponse(f"/drafts/{draft_id}?lang={_resolve_lang(request)}", 303)
 
 
@@ -1410,7 +1411,9 @@ def draft_action(request: Request, draft_id: int, action: str = Form("save"),
                 merged = {**d, **updates}
                 drafts.record_version(tenant["id"], draft_id,
                                       merged.get("prompt", ""), merged.get("format", ""),
-                                      new_content)
+                                      new_content,
+                                      fb_image=merged.get("fb_image", ""),
+                                      ig_image=merged.get("ig_image", ""))
     elif action == "publish":
         d = drafts.get_draft(tenant["id"], draft_id)
         new_status = "draft" if (d and d["status"] == "published") else "published"

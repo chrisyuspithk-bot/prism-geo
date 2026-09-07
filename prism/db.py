@@ -163,6 +163,8 @@ CREATE TABLE IF NOT EXISTS draft_versions (
     prompt TEXT NOT NULL DEFAULT '',
     format TEXT NOT NULL DEFAULT 'linkedin_post',
     content TEXT NOT NULL DEFAULT '',
+    fb_image TEXT NOT NULL DEFAULT '',
+    ig_image TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -206,6 +208,13 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE drafts ADD COLUMN fb_image TEXT NOT NULL DEFAULT ''")
     if "ig_image" not in draft_cols:
         conn.execute("ALTER TABLE drafts ADD COLUMN ig_image TEXT NOT NULL DEFAULT ''")
+
+    # Draft version snapshots now carry the social images too.
+    ver_cols = {r["name"] for r in conn.execute("PRAGMA table_info(draft_versions)")}
+    if "fb_image" not in ver_cols:
+        conn.execute("ALTER TABLE draft_versions ADD COLUMN fb_image TEXT NOT NULL DEFAULT ''")
+    if "ig_image" not in ver_cols:
+        conn.execute("ALTER TABLE draft_versions ADD COLUMN ig_image TEXT NOT NULL DEFAULT ''")
 
     # Multi-tenant: ensure a default tenant exists and every row is scoped.
     # Note: SQLite can't ALTER-in a REFERENCES column with a non-NULL default,
