@@ -81,9 +81,10 @@
       {% if versions %}
       <div class="space-y-2">
         {% for v in versions %}
-        <div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+        <div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 cursor-help transition-colors hover:border-indigo-200"
+             onmouseenter="showVersionTip(event, {{ v.id }})" onmouseleave="hideVersionTip()">
           <div class="text-[11px] font-medium text-slate-700">{{ v.created_at }} <span class="text-slate-400">·</span> {{ v.format.replace('_', ' ') }}</div>
-          <div class="mt-1 text-xs text-slate-500 truncate cursor-help" title="{{ v.content }}">{{ v.content[:80] }}{% if v.content|length > 80 %}…{% endif %}</div>
+          <div class="mt-1 text-xs text-slate-500 truncate">{{ v.content[:80] }}{% if v.content|length > 80 %}…{% endif %}</div>
           <button type="button" onclick="restoreVersion({{ v.id }})"
                   class="mt-2 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-600 hover:bg-indigo-100">{{ t('restore') }}</button>
         </div>
@@ -95,6 +96,8 @@
     </div>
   </aside>
 </div>
+
+<div id="version-tooltip" class="pointer-events-none fixed z-50 hidden max-w-md rounded-lg bg-slate-900 px-3 py-2 text-xs leading-relaxed text-white shadow-xl whitespace-pre-wrap max-h-80 overflow-y-auto"></div>
 
 <script>
 {% include '_generate_helpers.js' %}
@@ -108,6 +111,28 @@ function restoreVersion(id) {
   document.getElementById('draft-prompt-field').value = v.prompt || '';
   document.getElementById('draft-format-field').value = v.format || '';
   window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+const versionTip = document.getElementById('version-tooltip');
+
+function showVersionTip(ev, id) {
+  const v = DRAFT_VERSIONS.find(x => x.id === id);
+  if (!v) return;
+  versionTip.textContent = v.content || v.prompt || '';
+  versionTip.classList.remove('hidden');
+  const r = ev.currentTarget.getBoundingClientRect();
+  const tw = versionTip.offsetWidth;
+  const th = versionTip.offsetHeight;
+  let left = r.left - tw - 12;
+  if (left < 8) left = r.right + 12;
+  let top = r.top;
+  if (top + th > window.innerHeight - 8) top = Math.max(8, window.innerHeight - th - 8);
+  versionTip.style.left = left + 'px';
+  versionTip.style.top = top + 'px';
+}
+
+function hideVersionTip() {
+  versionTip.classList.add('hidden');
 }
 
 {% if site %}
