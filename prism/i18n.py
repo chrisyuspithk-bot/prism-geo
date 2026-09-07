@@ -324,6 +324,8 @@ STRINGS = {
     "copied": {"zh-TW": "已複製！", "en": "Copied!"},
     "copy": {"zh-TW": "複製", "en": "Copy"},
     "download_image": {"zh-TW": "下載圖片", "en": "Download"},
+    "save_history": {"zh-TW": "儲存記錄", "en": "Save history"},
+    "restore": {"zh-TW": "還原", "en": "Restore"},
     "crawl_site": {"zh-TW": "爬取網站", "en": "Crawl Site"},
     "title_col": {"zh-TW": "標題", "en": "Title"},
     "chunks": {"zh-TW": "區塊", "en": "Chunks"},

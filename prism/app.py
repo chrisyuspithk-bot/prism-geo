@@ -1375,9 +1375,11 @@ def draft_view(request: Request, draft_id: int):
     engines = [{"name": e["name"]} for e in keystore.active_engines()]
     with connect() as conn:
         areas = workspace.key_areas(conn, tenant["id"])
+    versions = drafts.list_versions(tenant["id"], draft_id)
     return templates.TemplateResponse(
         request, "draft.html",
-        context=ctx(request, page="drafts", draft=d, site=site, engines=engines, key_areas=areas))
+        context=ctx(request, page="drafts", draft=d, site=site, engines=engines,
+                    key_areas=areas, versions=versions))
 
 
 @app.post("/drafts/{draft_id}")
@@ -1386,6 +1388,9 @@ def draft_action(request: Request, draft_id: int, action: str = Form("save"),
                  ig_image: str = Form(""), format: str = Form(""), prompt: str = Form("")):
     tenant = _tenant(request)
     if action == "save":
+        d = drafts.get_draft(tenant["id"], draft_id)
+        if not d:
+            return RedirectResponse("/drafts", 303)
         updates = {}
         if content is not None:
             updates["content"] = content
@@ -1399,6 +1404,12 @@ def draft_action(request: Request, draft_id: int, action: str = Form("save"),
             updates["ig_image"] = ig_image
         if updates:
             drafts.update_draft(tenant["id"], draft_id, **updates)
+            new_content = updates.get("content", d.get("content", ""))
+            if new_content != d.get("content"):
+                merged = {**d, **updates}
+                drafts.record_version(tenant["id"], draft_id,
+                                      merged.get("prompt", ""), merged.get("format", ""),
+                                      new_content)
     elif action == "publish":
         d = drafts.get_draft(tenant["id"], draft_id)
         new_status = "draft" if (d and d["status"] == "published") else "published"

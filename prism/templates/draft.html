@@ -71,10 +71,39 @@
   </div>
   {% endif %}
 </div>
+
+{% if versions %}
+<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+  <h3 class="text-sm font-semibold text-slate-600 mb-3">{{ t('save_history') }}</h3>
+  <div class="space-y-2">
+    {% for v in versions %}
+    <div class="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+      <div class="min-w-0">
+        <div class="text-xs font-medium text-slate-700">{{ v.created_at }} <span class="text-slate-400">·</span> {{ v.format.replace('_', ' ') }}</div>
+        <div class="text-xs text-slate-500 truncate">{{ v.content[:80] }}{% if v.content|length > 80 %}…{% endif %}</div>
+      </div>
+      <button type="button" onclick="restoreVersion({{ v.id }})"
+              class="shrink-0 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100">{{ t('restore') }}</button>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 </div>
 
 <script>
 {% include '_generate_helpers.js' %}
+
+const DRAFT_VERSIONS = {{ versions | tojson }};
+
+function restoreVersion(id) {
+  const v = DRAFT_VERSIONS.find(x => x.id === id);
+  if (!v) return;
+  document.getElementById('draft-content-ta').value = v.content || '';
+  document.getElementById('draft-prompt-field').value = v.prompt || '';
+  document.getElementById('draft-format-field').value = v.format || '';
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
 
 {% if site %}
 async function handleGenerate(e) {
