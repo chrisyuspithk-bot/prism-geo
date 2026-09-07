@@ -1255,18 +1255,21 @@ async def api_trending_hk(request: Request):
 
     if lang == "zh-TW":
         ask = (
-            "請搜尋網上即時資訊，列出「香港」而家最熱門嘅 5 個搜尋/趨勢關鍵詞。"
-            "每個關鍵詞要簡短（2-5 個字/詞）。\n\n"
+            "請搜尋網上即時資訊，列出「香港」而家最熱門嘅 5 個搜尋/趨勢話題。"
+            "每個話題要用一句簡短嘅半句描述（約 6-12 個字），說明「係咩事／關於咩」，"
+            "而唔係淨係俾一個名詞或人名。例：「王浩信 新劇 收視」而唔係「王浩信」。\n\n"
             "只回傳一個 JSON 字串陣列，唔好加任何 markdown 或其他文字：\n"
-            '["關鍵詞1", "關鍵詞2", "關鍵詞3", "關鍵詞4", "關鍵詞5"]'
+            '["話題1", "話題2", "話題3", "話題4", "話題5"]'
         )
     else:
         ask = (
             "Search the web for the latest information and list the top 5 "
             "currently trending searches/topics in Hong Kong right now. "
-            "Each keyword should be short (2-5 words).\n\n"
+            "Each topic should be a short half-sentence phrase (about 4-8 words) "
+            "that gives context on what it's about, not a bare noun or name. "
+            "For example \"Vincent Wong new drama ratings\" rather than \"Vincent Wong\".\n\n"
             "Return ONLY a JSON array of strings, no markdown or other text:\n"
-            '["keyword 1", "keyword 2", "keyword 3", "keyword 4", "keyword 5"]'
+            '["topic 1", "topic 2", "topic 3", "topic 4", "topic 5"]'
         )
 
     raw = await asyncio.to_thread(rag.generate_with_llm, ask)
