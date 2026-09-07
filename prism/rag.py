@@ -65,7 +65,7 @@ def build_prompt(chunks: list[dict], query: str, fmt: str) -> str:
 
 Use the WEBSITE CONTENT below as your primary source for the brand's facts, tone, and voice.
 
-If the USER REQUEST mentions a person, client, competitor, or topic that is NOT covered by the website content (for example a named individual like a client), research that entity — using web search when available — and incorporate accurate, relevant details about them into the copy.
+If the USER REQUEST mentions a person, brand, client, competitor, or topic that is NOT covered by the website content, use web search to research it, then weave 2–3 concrete, accurate facts about it into the copy (what it is, what it is known for, where it operates, or why it is relevant to the request). Do NOT merely mention its name — the copy must show you actually looked it up.
 
 Rules:
 - Ground brand facts, features, and claims in the website content.
