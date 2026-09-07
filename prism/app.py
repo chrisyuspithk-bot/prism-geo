@@ -1353,10 +1353,19 @@ def draft_view(request: Request, draft_id: int):
 
 @app.post("/drafts/{draft_id}")
 def draft_action(request: Request, draft_id: int, action: str = Form("save"),
-                 content: str = Form(None)):
+                 content: str = Form(None), fb_image: str = Form(""),
+                 ig_image: str = Form("")):
     tenant = _tenant(request)
-    if action == "save" and content is not None:
-        drafts.update_draft(tenant["id"], draft_id, content=content)
+    if action == "save":
+        updates = {}
+        if content is not None:
+            updates["content"] = content
+        if fb_image:
+            updates["fb_image"] = fb_image
+        if ig_image:
+            updates["ig_image"] = ig_image
+        if updates:
+            drafts.update_draft(tenant["id"], draft_id, **updates)
     elif action == "publish":
         d = drafts.get_draft(tenant["id"], draft_id)
         new_status = "draft" if (d and d["status"] == "published") else "published"
