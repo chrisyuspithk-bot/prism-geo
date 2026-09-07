@@ -61,12 +61,16 @@ def build_prompt(chunks: list[dict], query: str, fmt: str) -> str:
     context = "\n\n---\n\n".join(ctx_parts)
     format_desc = FORMATS.get(fmt, FORMATS["linkedin_post"])
 
-    return f"""You are a marketing copywriter. Using ONLY the website content below, write {format_desc}.
+    return f"""You are a marketing copywriter. Write {format_desc}.
+
+Use the WEBSITE CONTENT below as your primary source for the brand's facts, tone, and voice.
+
+If the USER REQUEST mentions a person, client, competitor, or topic that is NOT covered by the website content (for example a named individual like a client), research that entity — using web search when available — and incorporate accurate, relevant details about them into the copy.
 
 Rules:
-- Only use facts, features, and claims that appear in the provided content.
-- Keep the brand voice consistent with the source material.
-- Do NOT invent features, pricing, testimonials, or statistics not found below.
+- Ground brand facts, features, and claims in the website content.
+- For entities from the user request that aren't in the website content, search the web and include what you find.
+- Do NOT invent features, pricing, testimonials, or statistics.
 - Write in the same language as the user's request.
 
 WEBSITE CONTENT:
