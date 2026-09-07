@@ -116,6 +116,9 @@ function restoreVersion(id) {
   document.getElementById('draft-content-ta').value = v.content || '';
   document.getElementById('draft-prompt-field').value = v.prompt || '';
   document.getElementById('draft-format-field').value = v.format || '';
+  clearDraftImages();
+  if (v.fb_image) renderDraftImage('facebook', v.fb_image);
+  if (v.ig_image) renderDraftImage('instagram', v.ig_image);
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
@@ -269,6 +272,14 @@ async function generateDraftImage(platform) {
     spinner.classList.add('hidden');
     spinner.textContent = '{{ t('generating') }}';
   }
+}
+
+function clearDraftImages() {
+  document.getElementById('draft-fb-image').value = '';
+  document.getElementById('draft-ig-image').value = '';
+  const grid = document.getElementById('draft-images');
+  grid.querySelectorAll('[id^="draft-img-card-"]').forEach(function(c) { c.remove(); });
+  grid.classList.add('hidden');
 }
 
 function renderDraftImage(platform, dataUrl) {
