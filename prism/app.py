@@ -289,15 +289,25 @@ def delete_competitor(request: Request, competitor_id: int):
     return RedirectResponse("/settings/brand", status_code=303)
 
 
+@app.post("/settings/key-areas")
+def save_key_areas(request: Request, key_areas: str = Form("")):
+    tenant = _tenant(request)
+    areas = [a.strip() for a in key_areas.replace("\n", ",").split(",") if a.strip()]
+    workspace.set_key_areas(tenant["id"], areas)
+    return RedirectResponse("/settings/brand", status_code=303)
+
+
 @app.get("/settings/brand", response_class=HTMLResponse)
 def settings_brand(request: Request):
     tenant = _tenant(request)
     with connect() as conn:
         own = workspace.own_brand(conn, tenant["id"])
         competitors = [dict(c) for c in workspace.competitors(conn, tenant["id"])]
+        areas = workspace.key_areas(conn, tenant["id"])
     return templates.TemplateResponse(
         request, "settings_brand.html",
-        context=ctx(request, page="settings-brand", own=own, competitors=competitors))
+        context=ctx(request, page="settings-brand", own=own, competitors=competitors,
+                    key_areas=areas))
 
 
 # --- Dashboards (all tenant-scoped) --------------------------------------------
