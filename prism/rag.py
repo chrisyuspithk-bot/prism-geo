@@ -6,6 +6,7 @@ import httpx
 
 from . import embeddings
 from .db import connect, q
+from .extract import gemini_answer_text
 
 _RETRIEVAL_K = 5
 
@@ -77,33 +78,53 @@ YOUR RESPONSE:"""
 
 
 def generate_with_llm(prompt: str) -> str:
-    """Call the configured LLM to generate copy using the first available engine."""
+    """Generate copy with Gemini + Google Search grounding.
+
+    Falls back to the first available engine when Gemini isn't configured.
+    """
     from .keystore import active_engines
 
     engines = active_engines()
     if not engines:
         return "[Error: No LLM engine configured. Set an API key in Settings → Engine Keys.]"
 
+    # Prefer Gemini with live Google Search grounding.
+    gemini = next((e for e in engines if e["name"] == "gemini" and e.get("api_key")), None)
+    if gemini:
+        key = gemini["api_key"]
+        base = gemini.get("base_url") or "https://generativelanguage.googleapis.com/v1beta"
+        model = gemini.get("model") or "gemini-2.5-flash"
+        try:
+            resp = httpx.post(
+                f"{base.rstrip('/')}/models/{model}:generateContent?key={key}",
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "tools": [{"google_search": {}}],
+                },
+                timeout=90,
+            )
+            if resp.status_code >= 400:
+                detail = resp.text[:500]
+                try:
+                    detail = str(resp.json())
+                except Exception:
+                    pass
+                return f"[Error: Gemini {resp.status_code}: {detail}]"
+            data = resp.json()
+            if not data.get("candidates"):
+                block = data.get("promptFeedback", {}).get("blockReason", "")
+                reason = f" (blocked: {block})" if block else ""
+                return f"[Error: Gemini returned no candidates{reason}]"
+            return _clean_markdown(gemini_answer_text(data))
+        except Exception as e:
+            return f"[Error: {e}]"
+
     engine_info = engines[0]
-    engine_name = engine_info["name"]
     key = engine_info["api_key"]
     if not key or not key.strip():
         return "[Error: API key is empty. Set a valid key in Settings → Engine Keys.]"
     base = engine_info.get("base_url") or "https://api.deepseek.com/v1"
     model = engine_info.get("model") or "deepseek-v4-flash"
-
-    if engine_name == "gemini":
-        try:
-            resp = httpx.post(
-                f"{base}/models/{model}:generateContent?key={key}",
-                json={"contents": [{"parts": [{"text": prompt}]}]},
-                timeout=60,
-            )
-            data = resp.json()
-            text = data["candidates"][0]["content"]["parts"][0]["text"]
-            return _clean_markdown(text)
-        except Exception as e:
-            return f"[Error: {e}]"
 
     try:
         resp = httpx.post(
