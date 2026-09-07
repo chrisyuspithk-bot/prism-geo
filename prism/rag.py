@@ -61,7 +61,7 @@ def build_prompt(chunks: list[dict], query: str, fmt: str) -> str:
     context = "\n\n---\n\n".join(ctx_parts)
     format_desc = FORMATS.get(fmt, FORMATS["linkedin_post"])
 
-    return f"""You are a marketing copywriter. Write {format_desc}.
+    return f"""You are a marketing copywriter and Generative Engine Optimization (GEO) expert. Write {format_desc}.
 
 Use the WEBSITE CONTENT below as your primary source for the brand's facts, tone, and voice.
 
@@ -73,6 +73,14 @@ Rules:
 - Do NOT invent features, pricing, testimonials, or statistics.
 - Do NOT include citation markers or source numbers (like [1] or [1, 2]) in your response — write in clean prose.
 - Write in the same language as the user's request.
+
+GEO optimization:
+- Open with a clear, query-matching headline.
+- Use short paragraphs and bullet points so AI engines can extract key facts easily.
+- Keep recommendations concrete and actionable.
+- Position the brand as a helpful expert, not a sales pitch; keep the call-to-action soft and secondary.
+- Reflect accurate, current facts and avoid overstating scope or applicability.
+- Plain text only, no markdown.
 
 WEBSITE CONTENT:
 {context}

@@ -62,10 +62,6 @@
           <input type="hidden" name="content" id="draft-content">
           <button type="submit" class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100">{{ t('save_draft') }}</button>
         </form>
-        <button type="button" id="geo-btn" onclick="geoOptimize()"
-                class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50">
-          {{ t('geo_optimize') if t('geo_optimize') != 'geo_optimize' else '🚀 GEO Optimize' }}
-        </button>
         <button type="button" id="clean-btn" onclick="stripMarkdown()"
                 class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50">
           {{ t('clean_format') if t('clean_format') != 'clean_format' else '🧹 Clean' }}
@@ -174,39 +170,6 @@ function copyResult() {
     btn.textContent = '{{ t('copied') }}';
     setTimeout(() => btn.textContent = orig, 1500);
   });
-}
-
-async function geoOptimize() {
-  const btn = document.getElementById('geo-btn');
-  const spinner = document.getElementById('geo-spinner');
-  const resultText = document.getElementById('result-text');
-  const content = resultText.textContent.trim();
-
-  if (!content) return;
-
-  btn.disabled = true;
-  spinner.classList.remove('hidden');
-
-  try {
-    const resp = await fetch('/api/geo-optimize', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({content: content})
-    });
-    const data = await resp.json();
-
-    if (data.error) {
-      resultText.textContent = '[GEO Error] ' + data.error;
-    } else {
-      resultText.textContent = data.optimized;
-      document.getElementById('draft-content').value = data.optimized;
-    }
-  } catch(err) {
-    resultText.textContent = '[GEO Error] ' + err.message;
-  } finally {
-    btn.disabled = false;
-    spinner.classList.add('hidden');
-  }
 }
 
 async function stripMarkdown() {
