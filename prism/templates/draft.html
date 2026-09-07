@@ -85,6 +85,12 @@
              onmouseenter="showVersionTip(event, {{ v.id }})" onmouseleave="hideVersionTip()">
           <div class="text-[11px] font-medium text-slate-700">{{ v.created_at }} <span class="text-slate-400">·</span> {{ v.format.replace('_', ' ') }}</div>
           <div class="mt-1 text-xs text-slate-500 truncate">{{ v.content[:80] }}{% if v.content|length > 80 %}…{% endif %}</div>
+          {% if v.fb_image or v.ig_image %}
+          <div class="mt-1.5 flex gap-1.5">
+            {% if v.fb_image %}<img src="{{ v.fb_image }}" class="h-12 w-12 rounded object-cover border border-slate-200" alt="Facebook">{% endif %}
+            {% if v.ig_image %}<img src="{{ v.ig_image }}" class="h-12 w-12 rounded object-cover border border-slate-200" alt="Instagram">{% endif %}
+          </div>
+          {% endif %}
           <button type="button" onclick="restoreVersion({{ v.id }})"
                   class="mt-2 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-600 hover:bg-indigo-100">{{ t('restore') }}</button>
         </div>
@@ -119,17 +125,17 @@ function showVersionTip(ev, id) {
   const v = DRAFT_VERSIONS.find(x => x.id === id);
   if (!v) return;
   versionTip.innerHTML = '';
-  const txt = document.createElement('div');
-  txt.className = 'whitespace-pre-wrap';
-  txt.textContent = v.content || v.prompt || '';
-  versionTip.appendChild(txt);
   if (v.fb_image || v.ig_image) {
     const imgs = document.createElement('div');
-    imgs.className = 'mt-2 flex gap-2';
+    imgs.className = 'mb-2 flex gap-2';
     if (v.fb_image) imgs.appendChild(versionImage(v.fb_image, 'Facebook'));
     if (v.ig_image) imgs.appendChild(versionImage(v.ig_image, 'Instagram'));
     versionTip.appendChild(imgs);
   }
+  const txt = document.createElement('div');
+  txt.className = 'whitespace-pre-wrap';
+  txt.textContent = v.content || v.prompt || '';
+  versionTip.appendChild(txt);
   versionTip.classList.remove('hidden');
   const r = ev.currentTarget.getBoundingClientRect();
   const tw = versionTip.offsetWidth;
@@ -143,11 +149,18 @@ function showVersionTip(ev, id) {
 }
 
 function versionImage(src, label) {
+  const wrap = document.createElement('div');
+  wrap.className = 'flex flex-col items-center';
   const img = document.createElement('img');
   img.src = src;
-  img.className = 'w-24 rounded border border-slate-700';
+  img.className = 'w-28 rounded-md border border-slate-600';
   img.alt = label;
-  return img;
+  const lbl = document.createElement('span');
+  lbl.className = 'mt-1 text-[10px] text-slate-300';
+  lbl.textContent = label;
+  wrap.appendChild(img);
+  wrap.appendChild(lbl);
+  return wrap;
 }
 
 function hideVersionTip() {
