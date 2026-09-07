@@ -12,7 +12,8 @@
   </p>
 </div>
 
-<div class="max-w-3xl">
+<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+  <div class="min-w-0">
 {% if site %}
   <div class="rounded-xl border border-slate-200 bg-white p-6 mb-6">
     {% set initial_prompt = draft.prompt %}
@@ -72,28 +73,27 @@
   {% endif %}
 </div>
 
-{% if versions %}
-<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-  <h3 class="text-sm font-semibold text-slate-600 mb-3">{{ t('save_history') }}</h3>
-  <div class="space-y-2">
-    {% for v in versions %}
-    <div class="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-      <div class="min-w-0">
-        <div class="text-xs font-medium text-slate-700">{{ v.created_at }} <span class="text-slate-400">·</span> {{ v.format.replace('_', ' ') }}</div>
-        <div class="text-xs text-slate-500 truncate">{{ v.content[:80] }}{% if v.content|length > 80 %}…{% endif %}</div>
-      </div>
-      <button type="button" onclick="restoreVersion({{ v.id }})"
-              class="shrink-0 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100">{{ t('restore') }}</button>
-    </div>
-    {% endfor %}
   </div>
-</div>
-{% else %}
-<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-  <h3 class="text-sm font-semibold text-slate-600 mb-3">{{ t('save_history') }}</h3>
-  <p class="text-xs text-slate-400">{{ t('no_save_history') }}</p>
-</div>
-{% endif %}
+
+  <aside class="self-start lg:sticky lg:top-8">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="text-sm font-semibold text-slate-600 mb-3">{{ t('save_history') }}</h3>
+      {% if versions %}
+      <div class="space-y-2">
+        {% for v in versions %}
+        <div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+          <div class="text-[11px] font-medium text-slate-700">{{ v.created_at }} <span class="text-slate-400">·</span> {{ v.format.replace('_', ' ') }}</div>
+          <div class="mt-1 text-xs text-slate-500 truncate cursor-help" title="{{ v.content }}">{{ v.content[:80] }}{% if v.content|length > 80 %}…{% endif %}</div>
+          <button type="button" onclick="restoreVersion({{ v.id }})"
+                  class="mt-2 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-600 hover:bg-indigo-100">{{ t('restore') }}</button>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-xs text-slate-400">{{ t('no_save_history') }}</p>
+      {% endif %}
+    </div>
+  </aside>
 </div>
 
 <script>
